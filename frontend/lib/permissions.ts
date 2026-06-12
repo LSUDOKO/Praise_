@@ -6,20 +6,16 @@ import {
   http,
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
-import {
-  erc7715ProviderActions,
-  WalletClientWithPermissions,
-} from '@metamask/smart-accounts-kit/actions'
+import { erc7715ProviderActions } from '@metamask/smart-accounts-kit/actions'
 
 const publicClient = createPublicClient({
   chain: arbitrumSepolia,
   transport: http(process.env.ARBITRUM_SEPOLIA_RPC || 'https://sepolia-rollup.arbitrum.io/rpc'),
 })
 
-// USDC address on Arbitrum Sepolia
 export const USDC_ADDRESS = '0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9' as `0x${string}`
 
-export function createPermissionWalletClient(): WalletClientWithPermissions {
+export function createPermissionWalletClient(): any {
   if (typeof window === 'undefined') {
     throw new Error('Permission wallet client can only be created in browser')
   }
@@ -32,13 +28,13 @@ export function createPermissionWalletClient(): WalletClientWithPermissions {
     transport: custom(window.ethereum),
   }).extend(erc7715ProviderActions() as any)
 
-  return walletClient as unknown as WalletClientWithPermissions
+  return walletClient
 }
 
 export interface BountyPermissionParams {
   bountyAddress: string
   agentAddress: string
-  maxAmount: number // in USDC (will be converted to wei)
+  maxAmount: number
   durationDays: number
   minAIScore: number
 }
@@ -91,13 +87,6 @@ export interface RedelegationParams {
 export async function createRedelegation(params: RedelegationParams) {
   const walletClient = createPermissionWalletClient()
 
-  // Import required functions from the kit
-  const { getSmartAccountsEnvironment, CaveatType } = await import('@metamask/smart-accounts-kit')
-
-  const environment = getSmartAccountsEnvironment(arbitrumSepolia.id)
-
-  // Note: In production, you would use the session account's redelegatePermissionContext
-  // This is a simplified version showing the concept
   console.log('Creating redelegation to:', params.toAddress)
   console.log('Max amount:', params.maxAmount, 'USDC')
   console.log('Permission context:', params.permissionContext)

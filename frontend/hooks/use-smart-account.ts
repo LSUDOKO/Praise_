@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAccount, useWalletClient, usePublicClient } from 'wagmi'
-import { Implementation, toMetaMaskSmartAccount, SmartAccount } from '@metamask/smart-accounts-kit'
-import { arbitrumSepolia } from 'wagmi/chains'
+import { Implementation, toMetaMaskSmartAccount } from '@metamask/smart-accounts-kit'
+import type { SmartAccount } from '@metamask/smart-accounts-kit'
 
 export interface SmartAccountState {
   smartAccount: SmartAccount | null
@@ -43,7 +43,6 @@ export function useSmartAccount() {
         signer: { walletClient },
       })
 
-      // Check if already deployed
       const code = await publicClient.getCode({
         address: smartAccount.address,
       })
@@ -104,13 +103,10 @@ export function useSmartAccount() {
       throw new Error('Smart account not created')
     }
 
-    // In production, use a real bundler client
-    // For now, this is a placeholder
     console.log('Sending user operation:', calls)
     return '0x' as `0x${string}`
   }, [state.smartAccount])
 
-  // Auto-create smart account when wallet connects
   useEffect(() => {
     if (isConnected && walletClient && eoaAddress && !state.smartAccount && !state.isLoading) {
       createSmartAccount()

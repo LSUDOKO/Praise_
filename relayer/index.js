@@ -39,16 +39,16 @@ const walletClient = createWalletClient({
 
 // --- Contract ABIs ---
 
-const BOUNTY_FACTORY_ABI = parseAbi([
-  "function createBounty(string issueURL, uint256 amount, uint256 contestPeriod) external returns (uint256 bountyId, address bountyAddress)",
-  "function fundBounty(uint256 bountyId, uint256 amount) external",
-  "function getBounty(uint256 bountyId) external view returns (tuple(address bounty, address creator, string issueURL, uint256 amount, uint256 contestPeriod, uint256 createdAt))",
-  "function getCreatorBounties(address creator) external view returns (uint256[])",
-  "function getBountyByIssue(string issueURL) external view returns (uint256)",
-  "function bountyCount() external view returns (uint256)",
-  "event BountyCreated(uint256 indexed bountyId, address indexed creator, string issueURL, uint256 amount, address bountyAddress)",
-  "event BountyFunded(uint256 indexed bountyId, address indexed funder, uint256 amount)",
-]);
+const BOUNTY_FACTORY_ABI = [
+  { name: "createBounty", type: "function", stateMutability: "nonpayable", inputs: [{ name: "issueURL", type: "string" }, { name: "amount", type: "uint256" }, { name: "contestPeriod", type: "uint256" }], outputs: [{ name: "bountyId", type: "uint256" }, { name: "bountyAddress", type: "address" }] },
+  { name: "fundBounty", type: "function", stateMutability: "nonpayable", inputs: [{ name: "bountyId", type: "uint256" }, { name: "amount", type: "uint256" }], outputs: [] },
+  { name: "getBounty", type: "function", stateMutability: "view", inputs: [{ name: "bountyId", type: "uint256" }], outputs: [{ type: "tuple", components: [{ name: "bounty", type: "address" }, { name: "creator", type: "address" }, { name: "issueURL", type: "string" }, { name: "amount", type: "uint256" }, { name: "contestPeriod", type: "uint256" }, { name: "createdAt", type: "uint256" }] }] },
+  { name: "getCreatorBounties", type: "function", stateMutability: "view", inputs: [{ name: "creator", type: "address" }], outputs: [{ type: "uint256[]" }] },
+  { name: "getBountyByIssue", type: "function", stateMutability: "view", inputs: [{ name: "issueURL", type: "string" }], outputs: [{ type: "uint256" }] },
+  { name: "bountyCount", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { name: "BountyCreated", type: "event", inputs: [{ name: "bountyId", type: "uint256", indexed: true }, { name: "creator", type: "address", indexed: true }, { name: "issueURL", type: "string", indexed: false }, { name: "amount", type: "uint256", indexed: false }, { name: "bountyAddress", type: "address", indexed: false }] },
+  { name: "BountyFunded", type: "event", inputs: [{ name: "bountyId", type: "uint256", indexed: true }, { name: "funder", type: "address", indexed: true }, { name: "amount", type: "uint256", indexed: false }] },
+];
 
 const BOUNTY_ABI = parseAbi([
   "function deposit(uint256 amount) external",
@@ -70,24 +70,23 @@ const AGENT_DELEGATION_ABI = parseAbi([
   "function revokePermission(address bounty) external",
   "function executeRelease(address bounty, address to, uint256 amount, uint256 aiScore) external",
   "function isReleaseAllowed(address bounty, address to, uint256 amount, uint256 aiScore) external view returns (bool, string)",
-  "function getPermission(address bounty) external view returns (tuple(address bounty, address beneficiary, uint256 maxAmount, uint256 startTime, uint256 endTime, uint256 minAIScore, bool active))",
   "function reputation(address agent) external view returns (uint256)",
   "event PermissionGranted(address indexed bounty, address indexed beneficiary, uint256 maxAmount, uint256 endTime, uint256 minAIScore)",
   "event PermissionRevoked(address indexed bounty)",
   "event ReleaseExecuted(address indexed bounty, address indexed to, uint256 amount)",
 ]);
 
-const BOUNTY_REGISTRY_ABI = parseAbi([
-  "function registerBounty(uint256 bountyId, address bounty, string repo, uint256 issueNumber, string issueURL, address creator, uint256 amount) external",
-  "function submitPR(uint256 bountyId, uint256 prNumber, string prURL, address solver) external",
-  "function resolveBounty(uint256 bountyId, bool approved) external",
-  "function getBounty(uint256 bountyId) external view returns (tuple(uint256 bountyId, address bounty, string repo, uint256 issueNumber, string issueURL, uint256 prNumber, string prURL, address creator, address solver, uint256 amount, uint8 status, uint256 createdAt))",
-  "function getRepoBounties(string repo) external view returns (uint256[])",
-  "function getBountyByIssue(string issueURL) external view returns (uint256)",
-  "function getBountyByPR(string prURL) external view returns (uint256)",
-  "function getUserBounties(address user) external view returns (uint256[])",
-  "function getTotalBounties() external view returns (uint256)",
-]);
+const BOUNTY_REGISTRY_ABI = [
+  { name: "registerBounty", type: "function", stateMutability: "nonpayable", inputs: [{ name: "bountyId", type: "uint256" }, { name: "bounty", type: "address" }, { name: "repo", type: "string" }, { name: "issueNumber", type: "uint256" }, { name: "issueURL", type: "string" }, { name: "creator", type: "address" }, { name: "amount", type: "uint256" }], outputs: [] },
+  { name: "submitPR", type: "function", stateMutability: "nonpayable", inputs: [{ name: "bountyId", type: "uint256" }, { name: "prNumber", type: "uint256" }, { name: "prURL", type: "string" }, { name: "solver", type: "address" }], outputs: [] },
+  { name: "resolveBounty", type: "function", stateMutability: "nonpayable", inputs: [{ name: "bountyId", type: "uint256" }, { name: "approved", type: "bool" }], outputs: [] },
+  { name: "getBounty", type: "function", stateMutability: "view", inputs: [{ name: "bountyId", type: "uint256" }], outputs: [{ type: "tuple", components: [{ name: "bountyId", type: "uint256" }, { name: "bounty", type: "address" }, { name: "repo", type: "string" }, { name: "issueNumber", type: "uint256" }, { name: "issueURL", type: "string" }, { name: "prNumber", type: "uint256" }, { name: "prURL", type: "string" }, { name: "creator", type: "address" }, { name: "solver", type: "address" }, { name: "amount", type: "uint256" }, { name: "status", type: "uint8" }, { name: "createdAt", type: "uint256" }] }] },
+  { name: "getRepoBounties", type: "function", stateMutability: "view", inputs: [{ name: "repo", type: "string" }], outputs: [{ type: "uint256[]" }] },
+  { name: "getBountyByIssue", type: "function", stateMutability: "view", inputs: [{ name: "issueURL", type: "string" }], outputs: [{ type: "uint256" }] },
+  { name: "getBountyByPR", type: "function", stateMutability: "view", inputs: [{ name: "prURL", type: "string" }], outputs: [{ type: "uint256" }] },
+  { name: "getUserBounties", type: "function", stateMutability: "view", inputs: [{ name: "user", type: "address" }], outputs: [{ type: "uint256[]" }] },
+  { name: "getTotalBounties", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+];
 
 const USDC_ABI = parseAbi([
   "function approve(address spender, uint256 amount) external returns (bool)",

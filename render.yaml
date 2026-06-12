@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: praiser-relayer
+    runtime: node
+    plan: free
+    buildCommand: cd relayer && npm install --production
+    startCommand: cd relayer && node index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: PRIVATE_KEY
+        sync: false
+      - key: ARBITRUM_SEPOLIA_RPC
+        value: https://sepolia-rollup.arbitrum.io/rpc
+      - key: NEXT_PUBLIC_BOUNTY_FACTORY_ADDRESS
+        value: 0xb238F82e842dDF05ED60e967FF936897729bd2bA
+      - key: NEXT_PUBLIC_AGENT_DELEGATION_ADDRESS
+        value: 0xde4549eC44ddda863F06c6D0589332930e8C1298
+      - key: NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS
+        value: 0x5a2C278979da1eefc5C016c8d478ccBCcbB4294D
+      - key: NEXT_PUBLIC_USDC_ADDRESS
+        value: 0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9
+      - key: VENICE_API_KEY
+        sync: false
+      - key: ONESHOT_API_KEY
+        sync: false
+      - key: ONESHOT_API_SECRET
+        sync: false
+      - key: ONESHOT_BUSINESS_ID
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false

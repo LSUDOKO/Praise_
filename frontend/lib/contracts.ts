@@ -19,11 +19,9 @@ export type Network = keyof typeof NETWORKS
 
 export const CURRENT_NETWORK = NETWORKS.testnet
 
-// Contract ABIs
 export const BOUNTY_FACTORY_ABI = parseAbi([
   'function createBounty(string issueURL, uint256 amount, uint256 contestPeriod) external returns (uint256 bountyId, address bountyAddress)',
   'function fundBounty(uint256 bountyId, uint256 amount) external',
-  'function getBounty(uint256 bountyId) external view returns (tuple(address bounty, address creator, string issueURL, uint256 amount, uint256 contestPeriod, uint256 createdAt))',
   'function getCreatorBounties(address creator) external view returns (uint256[])',
   'function getBountyByIssue(string issueURL) external view returns (uint256)',
   'function bountyCount() external view returns (uint256)',
@@ -40,7 +38,6 @@ export const BOUNTY_ABI = parseAbi([
   'function submitSolution(string prURL, address solver) external',
   'function submitAIScore(uint256 score) external',
   'function isReleasable() external view returns (bool, string)',
-  'function getBounty() external view returns (uint256 id, address creator, string issueURL, string prURL, uint256 amount, address solver, bool paused, uint256 contestPeriodEnd, uint256 createdAt, uint256 aiScore, bool prMerged)',
   'function bountyId() external view returns (uint256)',
   'function usdc() external view returns (address)',
   'function agent() external view returns (address)',
@@ -51,7 +48,6 @@ export const AGENT_DELEGATION_ABI = parseAbi([
   'function revokePermission(address bounty) external',
   'function executeRelease(address bounty, address to, uint256 amount, uint256 aiScore) external',
   'function isReleaseAllowed(address bounty, address to, uint256 amount, uint256 aiScore) external view returns (bool, string)',
-  'function getPermission(address bounty) external view returns (tuple(address bounty, address beneficiary, uint256 maxAmount, uint256 startTime, uint256 endTime, uint256 minAIScore, bool active))',
   'function reputation(address agent) external view returns (uint256)',
   'event PermissionGranted(address indexed bounty, address indexed beneficiary, uint256 maxAmount, uint256 endTime, uint256 minAIScore)',
   'event PermissionRevoked(address indexed bounty)',
@@ -62,7 +58,6 @@ export const BOUNTY_REGISTRY_ABI = parseAbi([
   'function registerBounty(uint256 bountyId, address bounty, string repo, uint256 issueNumber, string issueURL, address creator, uint256 amount) external',
   'function submitPR(uint256 bountyId, uint256 prNumber, string prURL, address solver) external',
   'function resolveBounty(uint256 bountyId, bool approved) external',
-  'function getBounty(uint256 bountyId) external view returns (tuple(uint256 bountyId, address bounty, string repo, uint256 issueNumber, string issueURL, uint256 prNumber, string prURL, address creator, address solver, uint256 amount, uint8 status, uint256 createdAt))',
   'function getRepoBounties(string repo) external view returns (uint256[])',
   'function getBountyByIssue(string issueURL) external view returns (uint256)',
   'function getBountyByPR(string prURL) external view returns (uint256)',
