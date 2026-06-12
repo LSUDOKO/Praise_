@@ -1,0 +1,26 @@
+{
+  "avalanche_mainnet": {
+    "chainId": 43114,
+    "BountyEscrow": "0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932",
+    "USDC": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+    "relayer": "0x235713C4CA6A8cd2adc0333F64d1b453BfCdBbfd"
+  },
+  "avalanche_fuji": {
+    "chainId": 43113,
+    "BountyEscrow": "0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932",
+    "MockUSDC": "0x4a7B3cD32D8f43FaDb08Cb2d0752BB87328b574d",
+    "relayer": "0x235713C4CA6A8cd2adc0333F64d1b453BfCdBbfd"
+  },
+  "genlayer_bradbury": {
+    "BountyJudge": "0x0dD12a8cC5441B26ED4a798AE0D1Dc6369fC2516"
+  },
+  "arbitrum_sepolia": {
+    "chainId": 421614,
+    "USDC": "0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9",
+    "BountyRegistry": "0x5a2C278979da1eefc5C016c8d478ccBCcbB4294D",
+    "AgentDelegation": "0xde4549eC44ddda863F06c6D0589332930e8C1298",
+    "BountyFactory": "0xb238F82e842dDF05ED60e967FF936897729bd2bA",
+    "BountyResolver": "0x05123409689B7BA30Ebb28d750d5250f242eA99E",
+    "SmartAccountAdapter": "0x78a5258dB533F8Ac986668DfFEB05019819eeC79"
+  }
+}

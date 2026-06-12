@@ -1,0 +1,25 @@
+{
+  "name": "praise-relayer",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "PRaise relayer for AI-verified bounties on Arbitrum Sepolia with 1Shot integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "viem": "^2.47.5"
+  },
+  "keywords": ["bounty", "ai", "arbitrum", "1shot", "metamask"],
+  "author": "PRaise",
+  "license": "MIT",
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.2"
+  }
+}
