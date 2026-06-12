@@ -24,7 +24,13 @@ const {
 
 // --- Arbitrum Sepolia setup ---
 
-const account = privateKeyToAccount(PRIVATE_KEY);
+if (!PRIVATE_KEY) {
+  console.error("FATAL: PRIVATE_KEY environment variable is not set");
+  process.exit(1);
+}
+
+const formattedKey = PRIVATE_KEY.startsWith('0x') ? PRIVATE_KEY : `0x${PRIVATE_KEY}`;
+const account = privateKeyToAccount(formattedKey);
 
 const publicClient = createPublicClient({
   chain: arbitrumSepolia,
