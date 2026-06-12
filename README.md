@@ -1,134 +1,327 @@
-# AutoBounty
+# PRaise
 
-Automated GitHub bounty verification using decentralized AI consensus.
+> **Open source bounties that pay themselves.**
+> GitHub bounties, settled by AI agents, released by Smart Accounts, gasless in stablecoins.
 
-GenLayer validators evaluate PRs against issues. Avalanche handles escrow. No human reviewers. Minutes, not weeks.
+---
+
+## Live Links
+
+| Service | URL |
+|---------|-----|
+| **Frontend** | [frontend-two-drab-47.vercel.app](https://frontend-two-drab-47.vercel.app) |
+| **Relayer API** | [praiser-relayer.onrender.com](https://praiser-relayer.onrender.com) |
+| **Health Check** | [praiser-relayer.onrender.com/health](https://praiser-relayer.onrender.com/health) |
+
+---
+
+## How It Works
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────────────────┐     ┌──────────────┐
-│  GitHub Repo │     │  Avalanche   │     │        GenLayer           │     │  Avalanche   │
-│              │     │              │     │                          │     │              │
-│  Issue #42   │────>│ Create Bounty│────>│  5 LLMs evaluate PR vs  │────>│ Release mUSDC│
-│  + PR #43    │     │ (lock mUSDC) │     │  issue independently    │     │ to solver    │
+│  GitHub Repo │     │  Arbitrum    │     │     Venice AI Review      │     │  Arbitrum    │
+│              │     │  Sepolia     │     │                          │     │  Sepolia     │
+│  Issue #42   │────>│ Create Bounty│────>│  Code review + scoring   │────>│ Release USDC │
+│  + PR #43    │     │ (lock USDC)  │     │  Spam + Sybil detection  │     │ to solver    │
 └──────────────┘     └──────────────┘     └──────────────────────────┘     └──────────────┘
 ```
 
-## How it works
+GitHub bounty platforms move $100M+/year in developer rewards, but verification is 100% manual. PRaise replaces the human reviewer with AI agents and enforces rules onchain via Smart Accounts. When a contributor submits a PR, the AI reviews the code, scores it against the issue, and if approved, the Smart Account automatically releases payment — gasless, non-custodial, no platform cut.
 
-GitHub bounty platforms move $100M+/year in developer rewards, but verification is 100% manual. A maintainer has to review every PR, compare it against the issue requirements, and approve the payout. This takes 3-15 days. Small bounties ($50-200) often never get reviewed at all.
+---
 
-AutoBounty replaces the human reviewer with GenLayer's decentralized AI consensus. When a contributor submits a PR, five independent validators — each running a different LLM (GPT, Claude, Gemini, Llama) — scrape the GitHub API, read the issue and the PR, and independently evaluate whether the work meets the requirements.
+## Deployed Smart Contracts
 
-GenLayer is the only blockchain that can read arbitrary web pages on-chain, reason about code quality in natural language, and achieve multi-model consensus on subjective evaluations. A single LLM is gameable. Five independent models are not.
+### Arbitrum Sepolia (Chain ID: 421614)
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| **BountyFactory** | [`0xb238F82e842dDF05ED60e967FF936897729bd2bA`](https://sepolia.arbiscan.io/address/0xb238F82e842dDF05ED60e967FF936897729bd2bA) | [Arbiscan](https://sepolia.arbiscan.io/address/0xb238F82e842dDF05ED60e967FF936897729bd2bA) |
+| **AgentDelegation** | [`0xde4549eC44ddda863F06c6D0589332930e8C1298`](https://sepolia.arbiscan.io/address/0xde4549eC44ddda863F06c6D0589332930e8C1298) | [Arbiscan](https://sepolia.arbiscan.io/address/0xde4549eC44ddda863F06c6D0589332930e8C1298) |
+| **BountyRegistry** | [`0x5a2C278979da1eefc5C016c8d478ccBCcbB4294D`](https://sepolia.arbiscan.io/address/0x5a2C278979da1eefc5C016c8d478ccBCcbB4294D) | [Arbiscan](https://sepolia.arbiscan.io/address/0x5a2C278979da1eefc5C016c8d478ccBCcbB4294D) |
+| **DisputeResolver** | [`0x05123409689B7BA30Ebb28d750d5250f242eA99E`](https://sepolia.arbiscan.io/address/0x05123409689B7BA30Ebb28d750d5250f242eA99E) | [Arbiscan](https://sepolia.arbiscan.io/address/0x05123409689B7BA30Ebb28d750d5250f242eA99E) |
+| **SmartAccountAdapter** | [`0x78a5258dB533F8Ac986668DfFEB05019819eeC79`](https://sepolia.arbiscan.io/address/0x78a5258dB533F8Ac986668DfFEB05019819eeC79) | [Arbiscan](https://sepolia.arbiscan.io/address/0x78a5258dB533F8Ac986668DfFEB05019819eeC79) |
+| **USDC** | [`0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9`](https://sepolia.arbiscan.io/address/0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9) | [Arbiscan](https://sepolia.arbiscan.io/address/0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9) |
+
+### Avalanche Mainnet (Chain ID: 43114)
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| **BountyEscrow** | [`0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932`](https://snowtrace.io/address/0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932) | [Snowtrace](https://snowtrace.io/address/0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932) |
+| **USDC** | [`0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E`](https://snowtrace.io/address/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E) | [Snowtrace](https://snowtrace.io/address/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E) |
+
+### Avalanche Fuji Testnet (Chain ID: 43113)
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| **BountyEscrow** | [`0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932`](https://testnet.snowtrace.io/address/0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932) | [Snowtrace Testnet](https://testnet.snowtrace.io/address/0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932) |
+| **MockUSDC** | [`0x4a7B3cD32D8f43FaDb08Cb2d0752BB87328b574d`](https://testnet.snowtrace.io/address/0x4a7B3cD32D8f43FaDb08Cb2d0752BB87328b574d) | [Snowtrace Testnet](https://testnet.snowtrace.io/address/0x4a7B3cD32D8f43FaDb08Cb2d0752BB87328b574d) |
+
+---
 
 ## Architecture
 
-| Component | Chain | Description |
-|-----------|-------|-------------|
-| `BountyEscrow.sol` | Avalanche C-Chain / Fuji | Solidity contract. Locks USDC in escrow, releases payment based on verdict. |
-| `MockUSDC.sol` | Avalanche Fuji | Freely mintable ERC-20 (6 decimals) for testnet bounties. |
-| `BountyJudge.py` | GenLayer Bradbury | Intelligent Contract. Fetches GitHub API data, evaluates PR via Optimistic Democracy consensus (Equivalence Principle Pattern 4: `prompt_non_comparative`). |
-| `relayer/index.js` | Off-chain | Bridges events between Avalanche and GenLayer. Submits solutions, triggers evaluation, resolves bounties. Supports mainnet and testnet via `CHAIN` env var. |
+### Smart Contract Architecture
+
+```
+BountyFactory.sol
+   ├── creates → Bounty.sol (one per bounty, holds USDC)
+   ├── creates → AgentDelegation.sol (one per agent, holds delegated authority)
+   └── reads  → BountyRegistry.sol (lookup bounties by repo/issue/PR)
+
+Bounty.sol
+   ├── deposit(usdcAmount)             // maintainer funds
+   ├── release(to, amount)             // called only by AgentDelegation
+   ├── reclaim()                        // maintainer reclaims unclaimed
+   ├── pause() / unpause()              // maintainer pauses
+   └── isReleasable() → (bool, reason)  // conditions check
+
+AgentDelegation.sol
+   ├── executeRelease(bountyId, to)    // called by relayer, validates permission
+   ├── attest(prMerged, aiScore)       // called by oracle + Venice
+   └── revoke()                         // maintainer revokes
+```
+
+### System Architecture
+
+```
+┌─────────────────┐
+│  GitHub Webhook │ → triggers on PR/issue events
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────┐
+│         PRaise Agent Service                │
+│  ┌──────────────┐  ┌──────────────────┐    │
+│  │ PR Watcher   │→ │ Venice Code      │    │
+│  │              │  │ Reviewer         │    │
+│  └──────────────┘  └──────────────────┘    │
+│  ┌──────────────┐  ┌──────────────────┐    │
+│  │ CI Waiter    │→ │ Sybil Detector   │    │
+│  └──────────────┘  └──────────────────┘    │
+│  ┌──────────────┐  ┌──────────────────┐    │
+│  │ Approver     │→ │ Notification     │    │
+│  │ (rule engine)│  │ Service          │    │
+│  └──────────────┘  └──────────────────┘    │
+└────────┬────────────────────────────────────┘
+         │ (when conditions met)
+         ▼
+┌─────────────────────────────────────────────┐
+│   Smart Account Release (ERC-7710 call)     │
+│   Bounty.sol → release(contributor, amt)    │
+└────────┬────────────────────────────────────┘
+         │ (relayed)
+         ▼
+┌─────────────────────────────────────────────┐
+│      1Shot Permissionless Relayer           │
+│      Gas paid in USDC, webhooks back        │
+└────────┬────────────────────────────────────┘
+         │
+         ▼
+    Contributor gets USDC
+```
+
+---
+
+## User Flows
+
+### Flow A — Maintainer Posts a Bounty
+
+1. Connect wallet — Smart Account is auto-created (or use existing)
+2. Pick an issue from the GitHub API
+3. Set bounty terms: amount, auto-release conditions, contest period
+4. Fund the escrow — USDC transferred to the Bounty Smart Account
+5. The PRaise bot comments on the issue: "Bounty #42 — 100 USDC"
+
+### Flow B — Contributor Submits Work
+
+1. Contributor sees the bounty in the GitHub comment
+2. Forks the repo, writes code, opens a PR
+3. Bot comments on the PR: "Linked to bounty #42. AI confidence: 82%."
+
+### Flow C — Auto-Release on Merge
+
+1. PR is merged by the maintainer
+2. PRaise agent runs the verification pipeline:
+   - Venice AI performs code review and scores the PR
+   - CI checks pass
+   - All release conditions are met
+3. Smart Account releases USDC to the contributor's wallet
+4. 1Shot relays the transaction — gas paid in USDC, contributor needs 0 ETH
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Smart Accounts** | MetaMask Smart Accounts Kit (kernel, EIP-7702, ERC-7715, ERC-7710) |
+| **Relayer** | 1Shot Permissionless Relayer (gas in USDC) |
+| **AI** | Venice AI (code review, spam detection, sybil detection) |
+| **Payment Protocol** | x402 (HTTP 402) |
+| **Stablecoin** | USDC on Arbitrum Sepolia |
+| **Chain** | Arbitrum Sepolia (testnet) |
+| **Frontend** | Next.js 16, RainbowKit, Wagmi, Viem |
+| **Relayer Backend** | Node.js, Express, viem |
+| **AI Models** | Venice Code LLM for PR review |
+
+---
+
+## API Endpoints
+
+### Relayer API (`https://praiser-relayer.onrender.com`)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/submit` | Submit a PR for AI review `{ bountyId, prURL, solverAddress }` |
+| `POST` | `/release` | Release bounty funds `{ bountyId, recipientAddress, amount }` |
+| `GET` | `/bounties` | List all bounties |
+| `GET` | `/status/:id` | Get bounty details by ID |
+| `POST` | `/webhook/github` | GitHub webhook receiver |
+| `POST` | `/webhook/1shot` | 1Shot relayer webhook receiver |
+| `GET` | `/health` | Health check and system status |
+
+### x402 Payment Endpoint
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/x402/pay` | Create x402 payment request for AI services |
+
+---
+
+## Smart Contract Details
+
+### BountyFactory.sol
+
+Creates and manages bounty instances. Each bounty gets its own `Bounty.sol` contract.
+
+**Key Functions:**
+- `createBounty(issueURL, amount, contestPeriod)` — Create a new bounty
+- `fundBounty(bountyId, amount)` — Add funds to a bounty
+- `getCreatorBounties(creator)` — List bounties by creator
+- `bountyCount()` — Total number of bounties
+
+### Bounty.sol
+
+Holds USDC for a specific bounty. Enforces contest period, pause/unpause, and release conditions.
+
+**Key Functions:**
+- `deposit(amount)` — Fund the bounty (owner only)
+- `release(to, amount)` — Release funds (agent only)
+- `reclaim()` — Reclaim unclaimed funds after 365 days
+- `pause()` / `unpause()` — Owner controls
+- `isReleasable()` — Check if bounty can be released
+
+### AgentDelegation.sol
+
+Manages delegated authority for AI agents. Time-bounded, scope-bounded, amount-bounded permissions.
+
+**Key Functions:**
+- `grantPermission(bounty, beneficiary, maxAmount, duration, minAIScore)` — Grant agent permission
+- `executeRelease(bounty, to, amount, aiScore)` — Execute release with validation
+- `revokePermission(bounty)` — Revoke agent permission
+- `reputation(agent)` — Check agent reputation
+
+### BountyRegistry.sol
+
+Indexes bounties by repo, issue, and PR for efficient lookup.
+
+**Key Functions:**
+- `registerBounty(bountyId, bounty, repo, issueNumber, issueURL, creator, amount)` — Register bounty
+- `submitPR(bountyId, prNumber, prURL, solver)` — Submit PR for bounty
+- `resolveBounty(bountyId, approved)` — Resolve bounty status
+- `getRepoBounties(repo)` — List bounties by repository
+- `getBountyByIssue(issueURL)` — Find bounty by issue URL
+- `getBountyByPR(prURL)` — Find bounty by PR URL
+
+---
 
 ## Setup
 
 ### Prerequisites
 
-- Docker 26+
 - Node.js 18+
-- Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`)
-- API key: OpenAI or Anthropic (for GenLayer Studio validators)
+- pnpm or npm
+- MetaMask browser wallet
 
-### GenLayer
-
-```bash
-npm install -g genlayer
-genlayer init                        # select your LLM provider
-genlayer up                          # Studio runs at localhost:8080 (local dev)
-```
-
-Deploy to Testnet Bradbury:
+### Frontend
 
 ```bash
-genlayer network testnet-bradbury    # switch to public testnet
-genlayer deploy contracts/genlayer/BountyJudge.py
+cd frontend
+pnpm install
+pnpm run dev
 ```
 
-> **Consensus model:** GenLayer uses Optimistic Democracy by default. When `BountyJudge` calls `prompt_non_comparative` (Equivalence Principle Pattern 4), the leader node evaluates the PR, then validators independently verify whether the verdict is reasonable. If a validator disagrees, an appeal round kicks in automatically. No extra code needed.
-
-### Avalanche (Solidity)
-
-```bash
-cd contracts/solidity
-forge install
-forge build
-forge test
-```
-
-Deploy to Fuji:
-
-```bash
-# Deploy MockUSDC first
-forge create --rpc-url https://api.avax-test.network/ext/bc/C/rpc \
-  --private-key $PK \
-  src/MockUSDC.sol:MockUSDC
-
-# Deploy BountyEscrow with relayer address + mUSDC address
-forge create --rpc-url https://api.avax-test.network/ext/bc/C/rpc \
-  --private-key $PK \
-  src/BountyEscrow.sol:BountyEscrow \
-  --constructor-args $RELAYER_ADDRESS $MUSDC_ADDRESS
-```
+Open [http://localhost:3000](http://localhost:3000)
 
 ### Relayer
 
 ```bash
 cd relayer
 npm install
-cp .env.example .env   # edit with your contract addresses and keys
+cp .env.example .env   # edit with your keys
 node index.js
 ```
 
-## Tech Stack
+### Environment Variables
 
-| Tech | Role |
-|------|------|
-| GenLayer (Bradbury testnet) | AI consensus — web scraping + LLM evaluation + Optimistic Democracy |
-| Avalanche C-Chain (mainnet) | Escrow — lock/release real USDC via Solidity |
-| Avalanche Fuji (testnet) | Escrow — lock/release mUSDC (mintable) for testing |
-| Foundry | Solidity toolchain — build, test, deploy |
-| viem | Avalanche client in the relayer |
-| genlayer-js | GenLayer client in the relayer |
+```bash
+# Arbitrum Sepolia
+PRIVATE_KEY=your_relayer_private_key
+ARBITRUM_SEPOLIA_RPC=https://sepolia-rollup.arbitrum.io/rpc
 
-## Deployed Contracts
+# Contract Addresses
+NEXT_PUBLIC_BOUNTY_FACTORY_ADDRESS=0xb238F82e842dDF05ED60e967FF936897729bd2bA
+NEXT_PUBLIC_AGENT_DELEGATION_ADDRESS=0xde4549eC44ddda863F06c6D0589332930e8C1298
+NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS=0x5a2C278979da1eefc5C016c8d478ccBCcbB4294D
+NEXT_PUBLIC_USDC_ADDRESS=0x75cc4FDf07Da32Fd5a00F8B922e7d51ddA4e50B9
 
-### Avalanche Mainnet
+# AI & Relayer
+VENICE_API_KEY=your_venice_api_key
+ONESHOT_API_KEY=your_oneshot_api_key
+ONESHOT_API_SECRET=your_oneshot_api_secret
+GITHUB_TOKEN=your_github_pat
+```
 
-| Contract | Address |
-|----------|---------|
-| BountyEscrow | [`0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932`](https://snowtrace.io/address/0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932) |
-| USDC | [`0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E`](https://snowtrace.io/address/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E) |
-| Relayer | [`0x235713C4CA6A8cd2adc0333F64d1b453BfCdBbfd`](https://snowtrace.io/address/0x235713C4CA6A8cd2adc0333F64d1b453BfCdBbfd) |
+---
 
-### Avalanche Fuji (Testnet)
+## Testing
 
-| Contract | Address |
-|----------|---------|
-| MockUSDC | [`0x4a7B3cD32D8f43FaDb08Cb2d0752BB87328b574d`](https://testnet.snowtrace.io/address/0x4a7B3cD32D8f43FaDb08Cb2d0752BB87328b574d) |
-| BountyEscrow | [`0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932`](https://testnet.snowtrace.io/address/0xB61Dc153eB4B149C5cb6Ed46FD67c62063311932) |
-| Relayer | [`0x235713C4CA6A8cd2adc0333F64d1b453BfCdBbfd`](https://testnet.snowtrace.io/address/0x235713C4CA6A8cd2adc0333F64d1b453BfCdBbfd) |
+```bash
+# Relayer tests
+cd relayer
+npm test
 
-### GenLayer Bradbury
+# All 24 tests should pass
+```
 
-| Contract | Address |
-|----------|---------|
-| BountyJudge | [`0x0dD12a8cC5441B26ED4a798AE0D1Dc6369fC2516`](https://explorer-bradbury.genlayer.com/contracts/0x0dD12a8cC5441B26ED4a798AE0D1Dc6369fC2516) |
+---
 
-## Hackathon
+## Competitive Advantage
 
-- **Aleph Hackathon** — Track: Future of Work
-- **GenLayer Bradbury Builders Hackathon** — March 20 - April 3, 2026
-- **Portal:** https://portal.genlayer.foundation
+| Feature | PRaise | Gitcoin | Bountysource | OnlyDust | Polar |
+|---------|--------|---------|--------------|----------|-------|
+| **Non-custodial** | Yes | No | No | No | No |
+| **Agentic** | Yes | No | No | Partial | No |
+| **Gasless for contributors** | Yes (1Shot) | No | No | No | No |
+| **AI-verified** | Yes (Venice) | No | No | No | No |
+| **Smart Account native** | Yes | No | No | No | No |
+| **Bounded permissions** | Yes (ERC-7715) | No | No | No | No |
+| **Public, open source** | Yes | Partial | No | No | No |
+| **x402 endpoint** | Yes | No | No | No | No |
+| **Privacy-first AI** | Yes (Venice) | No | No | No | No |
+
+---
+
+## Hackathon Tracks
+
+- **MetaMask Smart Accounts Kit x 1Shot API Hackathon** — 2026
+- **Best x402 + ERC-7710** — Core flow uses both
+- **Best Agent** — Multi-agent verification pipeline
+- **Best A2A coordination** — x402 endpoint for autonomous agents
+- **Best use of Venice AI** — Code review, spam detection, summaries
+
+---
 
 ## License
 
