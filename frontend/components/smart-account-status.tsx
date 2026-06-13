@@ -1,22 +1,21 @@
 'use client'
 
-import { useSmartAccountContext } from '@/components/smart-account-provider'
+import { useSmartAccount } from '@/lib/smart-account/smart-account-provider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, CheckCircle2, XCircle, Wallet, ArrowUpRight } from 'lucide-react'
+import { Loader2, CheckCircle2, Wallet, ArrowUpRight } from 'lucide-react'
 
 export function SmartAccountStatus() {
   const {
     smartAccount,
+    smartAccountAddress,
     isDeployed,
-    address,
-    isLoading,
-    error,
+    isCreating,
     deploySmartAccount,
-  } = useSmartAccountContext()
+  } = useSmartAccount()
 
-  if (!smartAccount && !isLoading) {
+  if (!smartAccount && !isCreating) {
     return (
       <Card className="glass border-white/10">
         <CardHeader>
@@ -32,7 +31,7 @@ export function SmartAccountStatus() {
     )
   }
 
-  if (isLoading) {
+  if (isCreating) {
     return (
       <Card className="glass border-white/10">
         <CardHeader>
@@ -42,22 +41,6 @@ export function SmartAccountStatus() {
           </CardTitle>
           <CardDescription>
             Setting up your smart account on Arbitrum Sepolia
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card className="glass border-red-500/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-400">
-            <XCircle className="h-5 w-5" />
-            Smart Account Error
-          </CardTitle>
-          <CardDescription className="text-red-300">
-            {error}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -80,7 +63,7 @@ export function SmartAccountStatus() {
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-400">Address</span>
             <Badge variant="outline" className="font-mono text-xs">
-              {address?.slice(0, 6)}...{address?.slice(-4)}
+              {smartAccountAddress?.slice(0, 6)}...{smartAccountAddress?.slice(-4)}
             </Badge>
           </div>
           <div className="flex items-center justify-between">
@@ -98,7 +81,7 @@ export function SmartAccountStatus() {
           </div>
         </div>
 
-        {!isDeployed && (
+        {!isDeployed && smartAccount && (
           <Button
             onClick={deploySmartAccount}
             className="w-full bg-[--brand-teal] hover:bg-[--brand-teal]/80"
@@ -107,9 +90,9 @@ export function SmartAccountStatus() {
           </Button>
         )}
 
-        {address && (
+        {smartAccountAddress && (
           <a
-            href={`https://sepolia.arbiscan.io/address/${address}`}
+            href={`https://sepolia.arbiscan.io/address/${smartAccountAddress}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1 text-sm text-[--brand-blue] hover:underline"

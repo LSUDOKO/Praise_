@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Web3Auth } from "@web3auth/modal";
 import type { IProvider } from "@web3auth/modal";
 
@@ -93,6 +93,9 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
   const [userInfo, setUserInfo] = useState<any | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  // Use refs for synchronous access during init race conditions
+  const web3authRef = useRef<Web3Auth | null>(null);
+  const initResolveRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -119,6 +122,16 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
           chains: [
             {
               chainNamespace: "eip155",
+              chainId: "0x1", // Ethereum Mainnet — included so the MetaMask connector doesn't fail
+              rpcTarget: "https://eth.llamarpc.com",
+              displayName: "Ethereum Mainnet",
+              blockExplorerUrl: "https://etherscan.io",
+              ticker: "ETH",
+              tickerName: "Ethereum",
+              logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+            },
+            {
+              chainNamespace: "eip155",
               chainId: "0x66eee", // Arbitrum Sepolia (421614)
               rpcTarget: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC || "https://sepolia-rollup.arbitrum.io/rpc",
               displayName: "Arbitrum Sepolia",
@@ -142,6 +155,7 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
         await web3authInstance.init();
 
         setWeb3auth(web3authInstance);
+        web3authRef.current = web3authInstance;
 
         // Check if already connected — v11 uses connection.ethereumProvider
         if (web3authInstance.connected && web3authInstance.connection?.ethereumProvider) {
@@ -167,6 +181,10 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
         console.error("❌ Error initializing Web3Auth:", error);
       } finally {
         setIsInitializing(false);
+        if (initResolveRef.current) {
+          initResolveRef.current();
+          initResolveRef.current = null;
+        }
       }
     };
 
@@ -176,13 +194,29 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, []);    const login = async () => {
-    if (!web3auth) {
+  }, []);
+
+  const waitForInit = async () => {
+    // Use ref for synchronous check (state may not have updated yet)
+    if (web3authRef.current) return;
+    // If init is still in progress, wait for it
+    if (isInitializing && !initResolveRef.current) {
+      await new Promise<void>((resolve) => {
+        initResolveRef.current = resolve;
+      });
+    }
+  };
+
+  const login = async () => {
+    await waitForInit();
+    // Check ref synchronously — state might not have re-rendered yet
+    if (!web3authRef.current) {
       throw new Error("Web3Auth not initialized yet. Please wait a moment and try again.");
     }
+    const w3a = web3authRef.current;
 
     try {
-      const connection = await web3auth.connect();
+      const connection = await w3a.connect();
       if (!connection?.ethereumProvider) {
         throw new Error("No Ethereum provider available after connection");
       }
@@ -191,7 +225,7 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
       setProvider(ethProvider);
       setIsConnected(true);
 
-      const user = await web3auth.getUserInfo();
+      const user = await w3a.getUserInfo();
       setUserInfo(user);
 
       // Get wallet address
@@ -210,19 +244,22 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    if (!web3auth) {
+    const w3a = web3auth || web3authRef.current;
+    if (!w3a) {
       return;
     }
     
     try {
-      await web3auth.logout();
+      await w3a.logout();
+    } catch (error) {
+      // Web3Auth throws if not connected via the connector — safe to ignore
+      console.log("👋 Logout completed (with non-critical disconnect warning)");
+    } finally {
+      // Always reset local state regardless of logout API result
       setProvider(null);
       setIsConnected(false);
       setUserInfo(null);
       setAddress(null);
-      console.log("👋 Logged out successfully");
-    } catch (error) {
-      console.error("Error during logout:", error);
     }
   };
 
