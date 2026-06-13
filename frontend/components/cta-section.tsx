@@ -2,19 +2,17 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Users } from 'lucide-react'
-import { useConnectModal } from '@rainbow-me/rainbowkit'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 
 export default function CtaSection() {
-  const { openConnectModal } = useConnectModal()
-  const { isConnected } = useAccount()
+  const { isConnected, login } = useWallet()
   const router = useRouter()
 
   const handleLaunchApp = () => {
     if (isConnected) {
       router.push('/dashboard')
     } else {
-      openConnectModal?.()
+      login()
     }
   }
 

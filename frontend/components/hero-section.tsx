@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, GitPullRequest, CheckCircle2, Cpu, DollarSign } from 'lucide-react'
-import { useConnectModal } from '@rainbow-me/rainbowkit'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 
 const terminalLines = [
   { delay: 0,    text: '$ autobounty create --issue https://github.com/org/repo/issues/42 --amount 100', type: 'cmd' },
@@ -66,15 +65,14 @@ const pills = [
 ]
 
 export default function HeroSection() {
-  const { openConnectModal } = useConnectModal()
-  const { isConnected } = useAccount()
+  const { isConnected, login } = useWallet()
   const router = useRouter()
 
   const handleLaunchApp = () => {
     if (isConnected) {
       router.push('/dashboard')
     } else {
-      openConnectModal?.()
+      login()
     }
   }
 

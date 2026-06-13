@@ -5,9 +5,9 @@ import { Plus, Loader2, Wallet, Github, Building2, Bot, User } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { parseUnits } from 'viem'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useWallet } from '@/hooks/use-wallet'
 import { useBountyStore } from '@/lib/bounty-store'
 import { NETWORKS, BOUNTY_FACTORY_ABI, USDC_ABI, CURRENT_NETWORK } from '@/lib/contracts'
 import BountyList from './bounty-list'
@@ -16,7 +16,7 @@ import AgentModeContent from './agent-mode-content'
 export default function CompanyDashboard() {
   const [githubUrl, setGithubUrl] = useState('')
   const [amount, setAmount] = useState('')
-  const { address, isConnected: walletConnected } = useAccount()
+  const { address, isConnected: walletConnected, login } = useWallet()
   const [solverMode, setSolverMode] = useState<'human' | 'agent'>('human')
   const [txStep, setTxStep] = useState<'idle' | 'approving' | 'creating' | 'done'>('idle')
 
@@ -140,19 +140,15 @@ export default function CompanyDashboard() {
                     <span className="ml-auto text-xs text-[var(--brand-teal)]">Connected</span>
                   </div>
                 ) : (
-                  <ConnectButton.Custom>
-                    {({ openConnectModal }) => (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={openConnectModal}
-                        className="w-full border-white/10 bg-white/5 text-white hover:bg-[var(--brand-glow-teal)] hover:border-[var(--brand-teal)]/30 hover:text-[var(--brand-teal)]"
-                      >
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Connect Wallet
-                      </Button>
-                    )}
-                  </ConnectButton.Custom>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => login()}
+                    className="w-full border-white/10 bg-white/5 text-white hover:bg-[var(--brand-glow-teal)] hover:border-[var(--brand-teal)]/30 hover:text-[var(--brand-teal)]"
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Connect Wallet
+                  </Button>
                 )}
               </div>
 

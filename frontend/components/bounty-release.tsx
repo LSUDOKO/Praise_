@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,7 @@ export function BountyRelease({
   aiScore,
   onReleaseComplete,
 }: BountyReleaseProps) {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const { isReleasing, releaseBounty } = useRelayer()
   const [releaseStatus, setReleaseStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [txHash, setTxHash] = useState<string | null>(null)

@@ -1,11 +1,12 @@
 'use client'
 
-import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { createConfig, http } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 
-export const config = getDefaultConfig({
-  appName: 'PRaise',
-  projectId: 'praise-hackathon',
+export const config = createConfig({
   chains: [arbitrumSepolia],
+  transports: {
+    [arbitrumSepolia.id]: http(),
+  },
   ssr: true,
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 import {
   requestBountyPermission,
   checkSupportedPermissions,
@@ -21,7 +21,7 @@ export interface PermissionState {
 }
 
 export function usePermissions() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const [state, setState] = useState<PermissionState>({
     supportedPermissions: [],
     grantedPermissions: [],

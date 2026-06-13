@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useWallet } from '@/hooks/use-wallet'
 import RoleToggle from './role-toggle'
 import CompanyDashboard from './company-dashboard'
 import DeveloperDashboard from './developer-dashboard'
@@ -14,6 +14,7 @@ import { VeniceStatus } from './venice-status'
 
 export default function DashboardClient() {
   const [role, setRole] = useState<'company' | 'developer'>('company')
+  const { isConnected, address, login } = useWallet()
 
   return (
     <div className="min-h-screen bg-background grid-bg noise">
@@ -38,31 +39,22 @@ export default function DashboardClient() {
             />
           </div>
           <div className="flex items-center gap-3">
-            {/* Custom Wallet Button */}
-            <ConnectButton.Custom>
-              {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
-                if (!mounted) return null
-                if (!account) return (
-                  <button
-                    onClick={openConnectModal}
-                    className="px-4 py-1.5 rounded-lg text-xs font-medium border border-[var(--brand-teal)]/40 text-[var(--brand-teal)] hover:bg-[var(--brand-teal)]/10 transition-all"
-                  >
-                    Connect Wallet
-                  </button>
-                )
-                return (
-                  <button
-                    onClick={openAccountModal}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-[var(--brand-teal)]" />
-                    <span className="text-xs font-mono text-white">
-                      {account.address.slice(0, 6)}…{account.address.slice(-4)}
-                    </span>
-                  </button>
-                )
-              }}
-            </ConnectButton.Custom>
+            {/* Embedded Wallet Button */}
+            {!isConnected ? (
+              <button
+                onClick={login}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium border border-[var(--brand-teal)]/40 text-[var(--brand-teal)] hover:bg-[var(--brand-teal)]/10 transition-all"
+              >
+                Connect Wallet
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5">
+                <span className="w-2 h-2 rounded-full bg-[var(--brand-teal)]" />
+                <span className="text-xs font-mono text-white">
+                  {address?.slice(0, 6)}…{address?.slice(-4)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </header>

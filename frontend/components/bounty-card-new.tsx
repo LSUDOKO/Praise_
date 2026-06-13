@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 import { useBountyStore } from '@/lib/bounty-store'
 import type { Bounty } from '@/lib/types'
 
@@ -45,7 +45,7 @@ interface BountyCardProps {
 export default function BountyCard({ bounty }: BountyCardProps) {
   const [showSubmitForm, setShowSubmitForm] = useState(false)
   const [prUrl, setPrUrl] = useState('')
-  const { address } = useAccount()
+  const { address } = useWallet()
 
   const { submitPR, isSubmitting, isEvaluating } = useBountyStore()
 

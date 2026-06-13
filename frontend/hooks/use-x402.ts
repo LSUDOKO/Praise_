@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useAccount, useWalletClient } from 'wagmi'
+import { useWalletClient } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 import { X402_SERVICES, type X402PaymentRequest } from '@/lib/x402'
 
 export { X402_SERVICES }
@@ -14,7 +15,7 @@ export interface X402State {
 }
 
 export function useX402() {
-  const { address } = useAccount()
+  const { address } = useWallet()
   const { data: walletClient } = useWalletClient()
   const [state, setState] = useState<X402State>({
     isPaying: false,

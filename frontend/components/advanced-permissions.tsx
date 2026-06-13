@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,7 @@ interface PermissionFormData {
 }
 
 export function AdvancedPermissions() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const {
     supportedPermissions,
     grantedPermissions,

@@ -63,11 +63,13 @@ interface Web3AuthContextType {
   isInitializing: boolean;
   userInfo: any | null;
   address: string | null;
+  chainId: number | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   getAccounts: () => Promise<string[]>;
   getBalance: () => Promise<string>;
   signMessage: (message: string) => Promise<string>;
+  switchChain: (chainIdHex: string) => Promise<void>;
 }
 
 const Web3AuthContext = createContext<Web3AuthContextType>({
@@ -77,11 +79,13 @@ const Web3AuthContext = createContext<Web3AuthContextType>({
   isInitializing: true,
   userInfo: null,
   address: null,
+  chainId: null,
   login: async () => {},
   logout: async () => {},
   getAccounts: async () => [],
   getBalance: async () => "0",
   signMessage: async () => "",
+  switchChain: async () => {},
 });
 
 export const useWeb3Auth = () => useContext(Web3AuthContext);
@@ -93,6 +97,7 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
   const [userInfo, setUserInfo] = useState<any | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<number | null>(null);
   // Use refs for synchronous access during init race conditions
   const web3authRef = useRef<Web3Auth | null>(null);
   const initResolveRef = useRef<(() => void) | null>(null);
@@ -174,6 +179,12 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
           if (accounts && accounts.length > 0) {
             setAddress(accounts[0]);
           }
+
+          // Get chain ID
+          const rawChainId = await ethProvider.request({
+            method: "eth_chainId",
+          }) as string;
+          setChainId(Number(rawChainId));
         }
 
         console.log("✅ Web3Auth initialized successfully");
@@ -237,6 +248,12 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
         setAddress(accounts[0]);
         console.log("🔑 Wallet connected:", accounts[0]);
       }
+
+      // Get chain ID
+      const rawChainId = await ethProvider.request({
+        method: "eth_chainId",
+      }) as string;
+      setChainId(Number(rawChainId));
     } catch (error) {
       console.error("Error during login:", error);
       throw error;
@@ -260,6 +277,7 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       setUserInfo(null);
       setAddress(null);
+      setChainId(null);
     }
   };
 
@@ -294,6 +312,23 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const switchChain = async (chainIdHex: string): Promise<void> => {
+    if (!provider) {
+      throw new Error("Provider not initialized");
+    }
+
+    try {
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chainIdHex }],
+      });
+      setChainId(Number(chainIdHex));
+    } catch (error) {
+      console.error("Error switching chain:", error);
+      throw error;
+    }
+  };
+
   const signMessage = async (message: string): Promise<string> => {
     if (!provider || !address) {
       throw new Error("Provider not initialized");
@@ -320,11 +355,13 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
         isInitializing,
         userInfo,
         address,
+        chainId,
         login,
         logout,
         getAccounts,
         getBalance,
         signMessage,
+        switchChain,
       }}
     >
       {children}

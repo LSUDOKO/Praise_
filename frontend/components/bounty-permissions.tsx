@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useWallet } from '@/hooks/use-wallet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,7 @@ interface BountyPermissionsProps {
 }
 
 export function BountyPermissions({ bountyAddress, bountyAmount, onPermissionGranted }: BountyPermissionsProps) {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const { requestPermission, isRequesting, isSupported } = usePermissions()
   const [agentAddress, setAgentAddress] = useState<string>(CURRENT_NETWORK.agentDelegationAddress || '')
   const [minAIScore, setMinAIScore] = useState('80')
