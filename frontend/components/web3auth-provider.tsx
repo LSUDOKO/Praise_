@@ -11,47 +11,52 @@ import type { IProvider } from "@web3auth/modal";
  */
 function patchWeb3AuthConfigFetch() {
   if (typeof window === "undefined") return;
-  const originalFetch = window.fetch.bind(window);
+  const originalFetch = window.fetch;
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const response = await originalFetch(input, init);
+    // Check the URL FIRST before ever calling originalFetch
+    // This avoids issues with browser extensions wrapping window.fetch
     const url =
       typeof input === "string"
         ? input
         : input instanceof URL
           ? input.href
-          : input.url;
+          : "url" in (input as Request) ? (input as Request).url : "";
 
-    // Only intercept Web3Auth project configuration API calls
-    if (url && url.includes("/api/v2/configuration")) {
-      try {
-        const cloned = response.clone();
-        const text = await cloned.text();
-        if (text) {
-          const data = JSON.parse(text);
-          if (data && data.chains && Array.isArray(data.chains)) {
-            data.chains = data.chains.map((chain: Record<string, unknown>) => ({
-              ...chain,
-              chainId:
-                typeof chain.chainId === "number"
-                  ? "0x" + (chain.chainId as number).toString(16)
-                  : chain.chainId,
-            }));
-          }
-          const sanitizedHeaders = new Headers(response.headers);
-          // Remove content-length since body size changed
-          sanitizedHeaders.delete("content-length");
-          sanitizedHeaders.delete("content-encoding");
-          return new Response(JSON.stringify(data), {
-            status: response.status,
-            statusText: response.statusText,
-            headers: sanitizedHeaders,
-          });
-        }
-      } catch {
-        // If parsing fails, use the original response unchanged
-      }
+    // Fast pass-through for non-Web3Auth URLs — just delegate to the original
+    if (!url || !url.includes("/api/v2/configuration")) {
+      return originalFetch(input, init);
     }
-    return response;
+
+    // Only intercept the Web3Auth project configuration API
+    try {
+      const response = await originalFetch(input, init);
+      const cloned = response.clone();
+      const text = await cloned.text();
+      if (text) {
+        const data = JSON.parse(text);
+        if (data && data.chains && Array.isArray(data.chains)) {
+          data.chains = data.chains.map((chain: Record<string, unknown>) => ({
+            ...chain,
+            chainId:
+              typeof chain.chainId === "number"
+                ? "0x" + (chain.chainId as number).toString(16)
+                : chain.chainId,
+          }));
+        }
+        const sanitizedHeaders = new Headers(response.headers);
+        sanitizedHeaders.delete("content-length");
+        sanitizedHeaders.delete("content-encoding");
+        return new Response(JSON.stringify(data), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: sanitizedHeaders,
+        });
+      }
+      return response;
+    } catch {
+      // On any error, fall back to the original fetch
+      return originalFetch(input, init);
+    }
   };
 }
 

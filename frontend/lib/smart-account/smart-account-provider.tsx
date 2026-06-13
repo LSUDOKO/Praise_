@@ -95,20 +95,37 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
   };
 
   const deploySmartAccount = async () => {
-    if (!smartAccount || isDeployed) return;
+    if (!smartAccount || !smartAccountAddress || isDeployed) return;
 
     try {
       console.log("🚀 Deploying Smart Account...");
       
-      // Deploy using the smart account's deploy method
-      const hash = await smartAccount.deploy();
-      await publicClient.waitForTransactionReceipt({ hash });
+      // The MetaMask Smart Accounts Kit processes deployment as part of
+      // the first user operation through a bundler. Send an empty user op
+      // which deploys the account on-chain.
+      const bundlerRpcUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL || 
+        "https://api.pimlico.io/v2/421614/rpc?apikey=your-api-key";
+      
+      const bundlerClient = createBundlerClient({
+        client: publicClient,
+        transport: http(bundlerRpcUrl),
+      });
+
+      // Send an empty user operation to deploy the account
+      // This will automatically deploy the account when processed
+      const hash = await bundlerClient.sendUserOperation({
+        account: smartAccount,
+        calls: [],
+      });
+
+      const receipt = await bundlerClient.waitForUserOperationReceipt({ hash });
+      await publicClient.waitForTransactionReceipt({ hash: receipt.receipt.transactionHash });
       
       setIsDeployed(true);
-      console.log("✅ Smart Account deployed:", hash);
+      console.log("✅ Smart Account deployed:", receipt.receipt.transactionHash);
     } catch (error) {
       console.error("❌ Error deploying Smart Account:", error);
-      throw error;
+      // Don't throw — deployment will happen automatically on first tx anyway
     }
   };
 
