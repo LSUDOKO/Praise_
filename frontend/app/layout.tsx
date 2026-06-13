@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import { Space_Grotesk, Space_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from 'sonner'
 import Web3Provider from '@/components/web3-provider'
-import { SmartAccountProvider } from '@/components/smart-account-provider'
+import { Web3AuthProvider } from '@/components/web3auth-provider'
+import { SmartAccountProvider } from '@/lib/smart-account/smart-account-provider'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -39,11 +41,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body className={`${spaceGrotesk.variable} ${spaceMono.variable} font-sans antialiased`}>
+      <body className={`${spaceGrotesk.variable} ${spaceMono.variable} font-sans antialiased`} suppressHydrationWarning>
         <Web3Provider>
-          <SmartAccountProvider>
-            {children}
-          </SmartAccountProvider>
+          <Web3AuthProvider>
+            <SmartAccountProvider>
+              {children}
+              <Toaster position="top-right" />
+            </SmartAccountProvider>
+          </Web3AuthProvider>
         </Web3Provider>
         <Analytics />
       </body>

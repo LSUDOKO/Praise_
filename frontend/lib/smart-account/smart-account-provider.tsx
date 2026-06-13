@@ -1,0 +1,178 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useWeb3Auth } from "@/components/web3auth-provider";
+import { createPublicClient, createWalletClient, custom, http, type Address } from "viem";
+import { arbitrumSepolia } from "viem/chains";
+import { createBundlerClient } from "viem/account-abstraction";
+import { Implementation, toMetaMaskSmartAccount } from "@metamask/smart-accounts-kit";
+import type { SmartAccount } from "@metamask/smart-accounts-kit";
+
+interface SmartAccountContextType {
+  smartAccount: SmartAccount | null;
+  smartAccountAddress: Address | null;
+  isDeployed: boolean;
+  isCreating: boolean;
+  createSmartAccount: () => Promise<void>;
+  deploySmartAccount: () => Promise<void>;
+  executeTransaction: (calls: Array<{
+    to: Address;
+    value?: bigint;
+    data?: `0x${string}`;
+  }>) => Promise<`0x${string}`>;
+}
+
+const SmartAccountContext = createContext<SmartAccountContextType>({
+  smartAccount: null,
+  smartAccountAddress: null,
+  isDeployed: false,
+  isCreating: false,
+  createSmartAccount: async () => {},
+  deploySmartAccount: async () => {},
+  executeTransaction: async () => "0x" as `0x${string}`,
+});
+
+export const useSmartAccount = () => useContext(SmartAccountContext);
+
+export function SmartAccountProvider({ children }: { children: ReactNode }) {
+  const { provider, address: eoaAddress, isConnected } = useWeb3Auth();
+  const [smartAccount, setSmartAccount] = useState<SmartAccount | null>(null);
+  const [smartAccountAddress, setSmartAccountAddress] = useState<Address | null>(null);
+  const [isDeployed, setIsDeployed] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const publicClient = createPublicClient({
+    chain: arbitrumSepolia,
+    transport: http(process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC || "https://sepolia-rollup.arbitrum.io/rpc"),
+  });
+
+  // Auto-create Smart Account when Web3Auth connects
+  useEffect(() => {
+    if (isConnected && provider && eoaAddress && !smartAccount && !isCreating) {
+      createSmartAccount();
+    }
+  }, [isConnected, provider, eoaAddress, smartAccount, isCreating]);
+
+  const createSmartAccount = async () => {
+    if (!provider || !eoaAddress || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      console.log("🔨 Creating Smart Account for:", eoaAddress);
+
+      // Create wallet client from Web3Auth provider
+      const walletClient = createWalletClient({
+        account: eoaAddress as Address,
+        chain: arbitrumSepolia,
+        transport: custom(provider),
+      });
+
+      // Create Smart Account using MetaMask Smart Accounts Kit
+      // Implementation.Hybrid supports both EOA owner and passkey signers
+      const account = await toMetaMaskSmartAccount({
+        client: publicClient,
+        implementation: Implementation.Hybrid,
+        deployParams: [eoaAddress as Address, [], [], []], // owner, admins, plugins, hooks
+        deploySalt: "0x", // deterministic address
+        signer: { walletClient },
+      });
+
+      setSmartAccount(account);
+      setSmartAccountAddress(account.address);
+
+      // Check if already deployed
+      const code = await publicClient.getCode({ address: account.address });
+      const deployed = code && code !== "0x";
+      setIsDeployed(!!deployed);
+
+      console.log("✅ Smart Account created:", account.address);
+      console.log("   Deployed:", deployed ? "Yes" : "No");
+    } catch (error) {
+      console.error("❌ Error creating Smart Account:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const deploySmartAccount = async () => {
+    if (!smartAccount || isDeployed) return;
+
+    try {
+      console.log("🚀 Deploying Smart Account...");
+      
+      // Deploy using the smart account's deploy method
+      const hash = await smartAccount.deploy();
+      await publicClient.waitForTransactionReceipt({ hash });
+      
+      setIsDeployed(true);
+      console.log("✅ Smart Account deployed:", hash);
+    } catch (error) {
+      console.error("❌ Error deploying Smart Account:", error);
+      throw error;
+    }
+  };
+
+  const executeTransaction = async (calls: Array<{
+    to: Address;
+    value?: bigint;
+    data?: `0x${string}`;
+  }>): Promise<`0x${string}`> => {
+    if (!smartAccount) {
+      throw new Error("Smart Account not initialized");
+    }
+
+    try {
+      console.log("📤 Executing transaction via Smart Account...");
+      
+      // Create bundler client for gasless transactions
+      // Note: You need to configure a bundler RPC endpoint for production
+      // Using Pimlico, Stackup, or another bundler service
+      const bundlerRpcUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL || 
+        "https://api.pimlico.io/v2/421614/rpc?apikey=your-api-key";
+      
+      const bundlerClient = createBundlerClient({
+        client: publicClient,
+        transport: http(bundlerRpcUrl),
+      });
+
+      // Send user operation through bundler
+      const userOpHash = await bundlerClient.sendUserOperation({
+        account: smartAccount,
+        calls: calls.map(call => ({
+          to: call.to,
+          value: call.value || 0n,
+          data: call.data || "0x",
+        })),
+      });
+
+      console.log("✅ User operation sent:", userOpHash);
+
+      // Wait for receipt
+      const receipt = await bundlerClient.waitForUserOperationReceipt({
+        hash: userOpHash,
+      });
+
+      console.log("✅ Transaction executed:", receipt.receipt.transactionHash);
+      return receipt.receipt.transactionHash;
+    } catch (error) {
+      console.error("❌ Error executing transaction:", error);
+      throw error;
+    }
+  };
+
+  return (
+    <SmartAccountContext.Provider
+      value={{
+        smartAccount,
+        smartAccountAddress,
+        isDeployed,
+        isCreating,
+        createSmartAccount,
+        deploySmartAccount,
+        executeTransaction,
+      }}
+    >
+      {children}
+    </SmartAccountContext.Provider>
+  );
+}
