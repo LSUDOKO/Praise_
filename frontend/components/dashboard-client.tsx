@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft, Wallet, Copy, CheckCircle2, ExternalLink, LogOut, ChevronDown, Shield } from 'lucide-react'
+import { ArrowLeft, Wallet, Copy, CheckCircle2, ExternalLink, LogOut, ChevronDown, Shield, Rocket, Loader2 } from 'lucide-react'
 import { useWallet } from '@/hooks/use-wallet'
 import { useSmartAccount } from '@/lib/smart-account/smart-account-provider'
 import RoleToggle from './role-toggle'
@@ -13,6 +13,7 @@ import { SmartAccountStatus } from './smart-account-status'
 import { RelayerStatus } from './relayer-status'
 import { VeniceStatus } from './venice-status'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,7 @@ export default function DashboardClient() {
   const [role, setRole] = useState<'company' | 'developer'>('company')
   const [copied, setCopied] = useState(false)
   const { isConnected, address, chainId, login, logout } = useWallet()
-  const { smartAccountAddress, isDeployed, isCreating } = useSmartAccount()
+  const { smartAccountAddress, isDeployed, isCreating, deploySmartAccount } = useSmartAccount()
 
   const copyAddress = async () => {
     if (address) {
@@ -36,11 +37,14 @@ export default function DashboardClient() {
     }
   }
 
+  const needsDeploy = isConnected && smartAccountAddress && !isDeployed
+  const isDeploying = isCreating
+
   return (
-    <div className="min-h-screen bg-background grid-bg noise">
+    <div className="min-h-screen bg-background grid-bg">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-black/60 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href="/"
@@ -58,8 +62,35 @@ export default function DashboardClient() {
               priority
             />
           </div>
-          <div className="flex items-center gap-3">
-            {/* Embedded Wallet Button */}
+
+          {/* Right side controls */}
+          <div className="flex items-center gap-2">
+            {/* Smart Account Deploy Button — shown when wallet is connected but smart account not deployed */}
+            {needsDeploy && !isDeploying && (
+              <button
+                onClick={deploySmartAccount}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all"
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                Deploy Account
+              </button>
+            )}
+            {needsDeploy && isDeploying && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Deploying...
+              </div>
+            )}
+
+            {/* Connected badge */}
+            {isConnected && smartAccountAddress && isDeployed && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="text-xs text-emerald-400 font-medium">Deployed</span>
+              </div>
+            )}
+
+            {/* Connect / Wallet Dropdown */}
             {!isConnected ? (
               <button
                 onClick={login}
@@ -143,8 +174,8 @@ export default function DashboardClient() {
                           Creating...
                         </Badge>
                       ) : smartAccountAddress ? (
-                        <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                          {isDeployed ? 'Deployed' : 'Ready'}
+                        <Badge variant="outline" className={`text-xs ${isDeployed ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                          {isDeployed ? 'Deployed' : 'Ready to Deploy'}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs bg-zinc-500/10 text-zinc-400 border-zinc-500/20">
@@ -156,6 +187,16 @@ export default function DashboardClient() {
                       <code className="text-xs text-white/60 font-mono truncate block">
                         {smartAccountAddress.slice(0, 10)}...{smartAccountAddress.slice(-6)}
                       </code>
+                    )}
+                    {needsDeploy && (
+                      <Button
+                        onClick={deploySmartAccount}
+                        size="sm"
+                        className="w-full mt-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 text-xs"
+                      >
+                        <Rocket className="w-3 h-3 mr-1" />
+                        Deploy Now
+                      </Button>
                     )}
                   </div>
                   
@@ -180,7 +221,15 @@ export default function DashboardClient() {
         {/* Welcome & Role Toggle */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+              <p className="text-sm text-[var(--text-dim)] mt-1">
+                {role === 'company' 
+                  ? 'Create bounties for your GitHub issues and let developers solve them'
+                  : 'Browse open bounties and earn rewards by submitting PRs'
+                }
+              </p>
+            </div>
             {isConnected && address && (
               <div className="hidden sm:flex items-center gap-2 text-xs text-[var(--text-dim)] bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -188,16 +237,12 @@ export default function DashboardClient() {
               </div>
             )}
           </div>
-          <p className="text-sm text-[var(--text-dim)] mb-4">
-            {role === 'company' 
-              ? 'Create bounties for your GitHub issues and let developers solve them'
-              : 'Browse open bounties and earn rewards by submitting PRs'
-            }
-          </p>
-          <RoleToggle role={role} onRoleChange={setRole} />
+          <div className="max-w-md">
+            <RoleToggle role={role} onRoleChange={setRole} />
+          </div>
         </div>
 
-        {/* Infrastructure Status */}
+        {/* Infrastructure Status Cards (3 columns) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <SmartAccountStatus />
           <RelayerStatus />

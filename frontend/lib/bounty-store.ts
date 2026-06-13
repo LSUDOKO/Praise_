@@ -83,7 +83,11 @@ export const useBountyStore = create<BountyStore>((set, get) => ({
   fetchBounties: async () => {
     try {
       const api = CURRENT_NETWORK.relayerApi
-      const res = await fetch(`${api}/bounties`)
+      // Add a timeout to avoid hanging when relayer is offline
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${api}/bounties`, { signal: controller.signal })
+      clearTimeout(timeoutId);
       const data = await res.json()
       const fetched: Bounty[] = data.map((b: any) => ({
         id: String(b.id),
@@ -114,6 +118,7 @@ export const useBountyStore = create<BountyStore>((set, get) => ({
       if (!hasPending) get().stopPolling()
     } catch (err) {
       console.error('Failed to fetch bounties:', err)
+      // Keep existing bounties on error — don't clear them
     }
   },
 

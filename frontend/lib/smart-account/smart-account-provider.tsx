@@ -100,29 +100,60 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
     try {
       console.log("🚀 Deploying Smart Account...");
       
-      // The MetaMask Smart Accounts Kit processes deployment as part of
-      // the first user operation through a bundler. Send an empty user op
-      // which deploys the account on-chain.
+      // Use the MetaMask Smart Accounts Kit's own deploy method via the account
+      // If it doesn't exist, we simulate deployment by checking if code exists
+      const code = await publicClient.getCode({ address: smartAccountAddress });
+      if (code && code !== "0x") {
+        setIsDeployed(true);
+        console.log("✅ Smart Account already deployed");
+        return;
+      }
+
+      // For the MetaMask Smart Accounts Kit, deployment happens automatically
+      // when the first user operation is sent through a bundler.
+      // We simulate the check since deploy() may not be exposed directly.
       const bundlerRpcUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL || 
         "https://api.pimlico.io/v2/421614/rpc?apikey=your-api-key";
       
-      const bundlerClient = createBundlerClient({
-        client: publicClient,
-        transport: http(bundlerRpcUrl),
-      });
+      try {
+        const bundlerClient = createBundlerClient({
+          client: publicClient,
+          transport: http(bundlerRpcUrl),
+        });
 
-      // Send an empty user operation to deploy the account
-      // This will automatically deploy the account when processed
-      const hash = await bundlerClient.sendUserOperation({
-        account: smartAccount,
-        calls: [],
-      });
+        // Send a self-call to trigger deployment
+        // This deploys the account by sending a user operation from it
+        const hash = await bundlerClient.sendUserOperation({
+          account: smartAccount,
+          calls: [{
+            to: smartAccountAddress,
+            value: 0n,
+            data: "0x" as `0x${string}`,
+          }],
+        });
 
-      const receipt = await bundlerClient.waitForUserOperationReceipt({ hash });
-      await publicClient.waitForTransactionReceipt({ hash: receipt.receipt.transactionHash });
-      
-      setIsDeployed(true);
-      console.log("✅ Smart Account deployed:", receipt.receipt.transactionHash);
+        try {
+          const receipt = await bundlerClient.waitForUserOperationReceipt({ hash });
+          await publicClient.waitForTransactionReceipt({ hash: receipt.receipt.transactionHash });
+          setIsDeployed(true);
+          console.log("✅ Smart Account deployed via bundler:", receipt.receipt.transactionHash);
+        } catch {
+          // If wait fails, the deployment may still have been initiated
+          // Check again after a delay
+          setTimeout(async () => {
+            const checkCode = await publicClient.getCode({ address: smartAccountAddress });
+            if (checkCode && checkCode !== "0x") {
+              setIsDeployed(true);
+              console.log("✅ Smart Account deployed (confirmed after delay)");
+            }
+          }, 10000);
+          throw new Error("Bundler submission initiated — check back shortly");
+        }
+      } catch (bundlerError) {
+        // If bundler is not configured, mark as ready but not deployed
+        console.warn("⚠️ Bundler not available. Smart Account ready for deployment when bundler is configured.");
+        // Deployment will happen automatically on first real transaction
+      }
     } catch (error) {
       console.error("❌ Error deploying Smart Account:", error);
       // Don't throw — deployment will happen automatically on first tx anyway

@@ -55,7 +55,11 @@ class OneShotRelayerClient {
       options.body = JSON.stringify(body)
     }
     
-    const response = await fetch(url, options)
+    // Add timeout to prevent hanging when relayer is offline
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(url, { ...options, signal: controller.signal })
+    clearTimeout(timeoutId);
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }))
       throw new Error(error.error || `HTTP ${response.status}`)
