@@ -4,6 +4,58 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Web3Auth } from "@web3auth/modal";
 import type { IProvider } from "@web3auth/modal";
 
+/**
+ * Intercept fetch calls to the Web3Auth configuration API and fix chainId values
+ * that come from the dashboard as decimal numbers instead of hex strings.
+ * The SDK's isHexStrict() validation rejects numeric chainIds.
+ */
+function patchWeb3AuthConfigFetch() {
+  if (typeof window === "undefined") return;
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await originalFetch(input, init);
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+
+    // Only intercept Web3Auth project configuration API calls
+    if (url && url.includes("/api/v2/configuration")) {
+      try {
+        const cloned = response.clone();
+        const text = await cloned.text();
+        if (text) {
+          const data = JSON.parse(text);
+          if (data && data.chains && Array.isArray(data.chains)) {
+            data.chains = data.chains.map((chain: Record<string, unknown>) => ({
+              ...chain,
+              chainId:
+                typeof chain.chainId === "number"
+                  ? "0x" + (chain.chainId as number).toString(16)
+                  : chain.chainId,
+            }));
+          }
+          const sanitizedHeaders = new Headers(response.headers);
+          // Remove content-length since body size changed
+          sanitizedHeaders.delete("content-length");
+          sanitizedHeaders.delete("content-encoding");
+          return new Response(JSON.stringify(data), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: sanitizedHeaders,
+          });
+        }
+      } catch {
+        // If parsing fails, use the original response unchanged
+      }
+    }
+    return response;
+  };
+}
+
+
 interface Web3AuthContextType {
   web3auth: Web3Auth | null;
   provider: IProvider | null;
@@ -53,9 +105,12 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Wait for window to be fully loaded
-        if (typeof window === 'undefined') {
+        if (typeof window === "undefined") {
           return;
         }
+
+        // Patch fetch to fix chainId from dashboard config
+        patchWeb3AuthConfigFetch();
 
         // Initialize Web3Auth v11
         const web3authInstance = new Web3Auth({
