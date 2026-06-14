@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { parseUnits } from 'viem'
+import { parseUnits, encodeFunctionData, createPublicClient, http } from 'viem'
+import { arbitrumSepolia } from 'viem/chains'
 import { useWallet } from '@/hooks/use-wallet'
 import { useSmartAccount } from '@/lib/smart-account/smart-account-provider'
 import { useBountyStore } from '@/lib/bounty-store'
@@ -21,20 +21,19 @@ export default function CompanyDashboard() {
   const [githubUrl, setGithubUrl] = useState('')
   const [amount, setAmount] = useState('')
   const { address, isConnected: walletConnected, login } = useWallet()
-  const { smartAccount, smartAccountAddress, isDeployed, isCreating, deploySmartAccount, deployTxHash, clearDeployTx, bundlerConfigured } = useSmartAccount()
+  const { smartAccount, smartAccountAddress, isDeployed, isCreating, deploySmartAccount, deployTxHash, clearDeployTx, executeTransaction } = useSmartAccount()
   const [solverMode, setSolverMode] = useState<'human' | 'agent'>('human')
   const [txStep, setTxStep] = useState<'idle' | 'approving' | 'creating' | 'done'>('idle')
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const { createBounty, fetchBounties, isCreating: isBountyCreating } = useBountyStore()
   const { bountyFactoryAddress, usdcAddress, usdcSymbol } = CURRENT_NETWORK
 
-  // Approve USDC
-  const { writeContract: writeApprove, data: approveHash } = useWriteContract()
-  const { isSuccess: approveConfirmed } = useWaitForTransactionReceipt({ hash: approveHash })
-
-  // Create Bounty
-  const { writeContract: writeCreate, data: createHash } = useWriteContract()
-  const { isSuccess: createConfirmed } = useWaitForTransactionReceipt({ hash: createHash })
+  const publicClient = createPublicClient({
+    chain: arbitrumSepolia,
+    transport: http(process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC || "https://sepolia-rollup.arbitrum.io/rpc"),
+  })
 
   // Fetch bounties on mount
   useEffect(() => { fetchBounties() }, [fetchBounties])
@@ -44,31 +43,6 @@ export default function CompanyDashboard() {
     : (!smartAccountAddress || !isDeployed) ? 'smart-account'
     : 'bounty'
 
-  // Chain: after approve confirmed, create bounty
-  useEffect(() => {
-    if (approveConfirmed && txStep === 'approving') {
-      setTxStep('creating')
-      const amountRaw = parseUnits(amount, 6)
-      writeCreate({
-        address: bountyFactoryAddress,
-        abi: BOUNTY_FACTORY_ABI,
-        functionName: 'createBounty',
-        args: [githubUrl, amountRaw, BigInt(7 * 24 * 60 * 60)], // 7 days contest period
-      })
-    }
-  }, [approveConfirmed, txStep])
-
-  // Chain: after create confirmed, update store
-  useEffect(() => {
-    if (createConfirmed && txStep === 'creating' && address) {
-      setTxStep('done')
-      createBounty({ githubIssueUrl: githubUrl, amountMUSDC: Number(amount) }, address)
-      setGithubUrl('')
-      setAmount('')
-      setTimeout(() => setTxStep('idle'), 2000)
-    }
-  }, [createConfirmed, txStep])
-
   const isValidGithubUrl = /^https?:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/issues\/\d+$/.test(githubUrl)
   const isValidAmount = Number(amount) > 0
   const isBusy = txStep !== 'idle' && txStep !== 'done'
@@ -76,17 +50,60 @@ export default function CompanyDashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!canSubmit || !address) return
+    if (!canSubmit || !address || !smartAccountAddress) return
 
+    setError(null)
     setTxStep('approving')
     const amountRaw = parseUnits(amount, 6)
 
-    writeApprove({
-      address: usdcAddress,
-      abi: USDC_ABI,
-      functionName: 'approve',
-      args: [bountyFactoryAddress, amountRaw],
-    })
+    try {
+      // Check USDC balance on the smart account
+      const balance = await publicClient.readContract({
+        address: usdcAddress,
+        abi: USDC_ABI,
+        functionName: 'balanceOf',
+        args: [smartAccountAddress],
+      }) as bigint
+
+      if (balance < amountRaw) {
+        const formatted = Number(balance) / 1e6
+        throw new Error(`Smart account has ${formatted.toFixed(2)} USDC but needs ${amount}. Get test USDC from the Circle faucet and send it to ${smartAccountAddress}.`)
+      }
+
+      // Batch approve + createBounty in a single user operation
+      console.log("📤 Sending approve + createBounty via smart account...")
+      setTxStep('creating')
+
+      const hash = await executeTransaction([
+        {
+          to: usdcAddress,
+          data: encodeFunctionData({
+            abi: USDC_ABI,
+            functionName: 'approve',
+            args: [bountyFactoryAddress, amountRaw],
+          }),
+        },
+        {
+          to: bountyFactoryAddress,
+          data: encodeFunctionData({
+            abi: BOUNTY_FACTORY_ABI,
+            functionName: 'createBounty',
+            args: [githubUrl, amountRaw, BigInt(7 * 24 * 60 * 60)],
+          }),
+        },
+      ])
+
+      setTxHash(hash)
+      setTxStep('done')
+      createBounty({ githubIssueUrl: githubUrl, amountMUSDC: Number(amount) }, address)
+      setGithubUrl('')
+      setAmount('')
+      setTimeout(() => { setTxStep('idle'); setTxHash(null) }, 5000)
+    } catch (err: any) {
+      console.error("Bounty creation failed:", err)
+      setError(err?.message || "Transaction failed")
+      setTxStep('idle')
+    }
   }
 
   // Step indicator component
@@ -371,7 +388,7 @@ export default function CompanyDashboard() {
                       {txStep === 'approving' ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Approving mUSDC...
+                          Checking balance...
                         </>
                       ) : txStep === 'creating' ? (
                         <>
@@ -390,6 +407,23 @@ export default function CompanyDashboard() {
                         </>
                       )}
                     </Button>
+
+                    {error && (
+                      <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                        {error}
+                      </div>
+                    )}
+
+                    {txHash && (
+                      <a
+                        href={`https://sepolia.arbiscan.io/tx/${txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[--brand-blue] hover:underline text-center block"
+                      >
+                        View transaction on Arbiscan ↗
+                      </a>
+                    )}
 
                     {/* Info: 2-step process */}
                     <div className="text-xs text-[var(--text-dimmer)] text-center bg-white/5 rounded-lg p-3">
