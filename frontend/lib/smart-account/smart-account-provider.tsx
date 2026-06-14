@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useWeb3Auth } from "@/components/web3auth-provider";
 import { createPublicClient, createWalletClient, custom, http, type Address } from "viem";
 import { arbitrumSepolia } from "viem/chains";
-import { createBundlerClient } from "viem/account-abstraction";
 import { Implementation, toMetaMaskSmartAccount } from "@metamask/smart-accounts-kit";
 import type { SmartAccount } from "@metamask/smart-accounts-kit";
 
@@ -13,6 +12,7 @@ interface SmartAccountContextType {
   smartAccountAddress: Address | null;
   isDeployed: boolean;
   isCreating: boolean;
+  bundlerConfigured: boolean;
   createSmartAccount: () => Promise<void>;
   deploySmartAccount: () => Promise<void>;
   executeTransaction: (calls: Array<{
@@ -27,6 +27,7 @@ const SmartAccountContext = createContext<SmartAccountContextType>({
   smartAccountAddress: null,
   isDeployed: false,
   isCreating: false,
+  bundlerConfigured: false,
   createSmartAccount: async () => {},
   deploySmartAccount: async () => {},
   executeTransaction: async () => "0x" as `0x${string}`,
@@ -40,11 +41,18 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
   const [smartAccountAddress, setSmartAccountAddress] = useState<Address | null>(null);
   const [isDeployed, setIsDeployed] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [bundlerConfigured, setBundlerConfigured] = useState(false);
 
   const publicClient = createPublicClient({
     chain: arbitrumSepolia,
     transport: http(process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC || "https://sepolia-rollup.arbitrum.io/rpc"),
   });
+
+  // Check if bundler is configured on mount
+  useEffect(() => {
+    const bundlerUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL;
+    setBundlerConfigured(!!bundlerUrl && !bundlerUrl.includes("your-api-key"));
+  }, []);
 
   // Auto-create Smart Account when Web3Auth connects
   useEffect(() => {
@@ -68,25 +76,29 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
       });
 
       // Create Smart Account using MetaMask Smart Accounts Kit
-      // Implementation.Hybrid supports both EOA owner and passkey signers
       const account = await toMetaMaskSmartAccount({
         client: publicClient,
         implementation: Implementation.Hybrid,
-        deployParams: [eoaAddress as Address, [], [], []], // owner, admins, plugins, hooks
-        deploySalt: "0x", // deterministic address
+        deployParams: [eoaAddress as Address, [], [], []],
+        deploySalt: "0x",
         signer: { walletClient },
       });
 
       setSmartAccount(account);
       setSmartAccountAddress(account.address);
 
-      // Check if already deployed
-      const code = await publicClient.getCode({ address: account.address });
-      const deployed = code && code !== "0x";
-      setIsDeployed(!!deployed);
-
-      console.log("✅ Smart Account created:", account.address);
-      console.log("   Deployed:", deployed ? "Yes" : "No");
+      // Check on-chain if already deployed
+      try {
+        const code = await publicClient.getCode({ address: account.address });
+        const deployed = code && code !== "0x";
+        setIsDeployed(!!deployed);
+        console.log("✅ Smart Account created:", account.address);
+        console.log("   Deployed:", deployed ? "Yes" : "No");
+      } catch {
+        // If RPC fails, assume not deployed
+        setIsDeployed(false);
+        console.log("✅ Smart Account created (counterfactual):", account.address);
+      }
     } catch (error) {
       console.error("❌ Error creating Smart Account:", error);
     } finally {
@@ -97,32 +109,89 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
   const deploySmartAccount = async () => {
     if (!smartAccount || !smartAccountAddress || isDeployed) return;
 
+    console.log("🚀 Deploying Smart Account...");
+
+    // First check if already deployed
     try {
-      console.log("🚀 Deploying Smart Account...");
-      
-      // Use the MetaMask Smart Accounts Kit's own deploy method via the account
-      // If it doesn't exist, we simulate deployment by checking if code exists
       const code = await publicClient.getCode({ address: smartAccountAddress });
       if (code && code !== "0x") {
         setIsDeployed(true);
         console.log("✅ Smart Account already deployed");
         return;
       }
+    } catch {
+      // RPC error — continue with deployment attempt
+    }
 
-      // For the MetaMask Smart Accounts Kit, deployment happens automatically
-      // when the first user operation is sent through a bundler.
-      // We simulate the check since deploy() may not be exposed directly.
-      const bundlerRpcUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL || 
-        "https://api.pimlico.io/v2/421614/rpc?apikey=your-api-key";
-      
+    // If a bundler is configured, try to deploy via user operation
+    if (bundlerConfigured) {
       try {
+        // Check if smart account has ETH for gas prefund
+        const balance = await publicClient.getBalance({ address: smartAccountAddress });
+        const minBalance = BigInt("1000000000000000"); // 0.001 ETH in wei
+
+        if (balance < minBalance) {
+          console.log("💸 Funding smart account with ETH for gas fees...");
+          
+          // Use the EOA wallet client to send ETH to the smart account address
+          const eoaWalletClient = createWalletClient({
+            account: eoaAddress as Address,
+            chain: arbitrumSepolia,
+            transport: custom(provider),
+          });
+
+          try {
+            const fees = await publicClient.estimateFeesPerGas();
+            const buffer = 1.2; // 20% buffer over estimated fees
+            const adjustedMaxFee = fees.maxFeePerGas !== undefined
+              ? (fees.maxFeePerGas * BigInt(Math.floor(buffer * 100))) / 100n
+              : undefined;
+            const adjustedPriorityFee = fees.maxPriorityFeePerGas !== undefined
+              ? (fees.maxPriorityFeePerGas * BigInt(Math.floor(buffer * 100))) / 100n
+              : undefined;
+
+            const txHash = await eoaWalletClient.sendTransaction({
+              to: smartAccountAddress,
+              value: minBalance,
+              maxFeePerGas: adjustedMaxFee,
+              maxPriorityFeePerGas: adjustedPriorityFee,
+            });
+            console.log("💸 Funding tx sent:", txHash);
+            await publicClient.waitForTransactionReceipt({ hash: txHash });
+            console.log("✅ Smart account funded with 0.001 ETH");
+          } catch (fundError) {
+            console.error("❌ Failed to fund smart account:", fundError);
+            console.log("ℹ️ Your wallet needs test ETH on Arbitrum Sepolia. Visit a faucet and send ETH to the smart account address, then try deploying again.");
+            return;
+          }
+        }
+
+        // Dynamically import createBundlerClient only when needed
+        const { createBundlerClient } = await import("viem/account-abstraction");
+        const bundlerUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL!;
+        
         const bundlerClient = createBundlerClient({
           client: publicClient,
-          transport: http(bundlerRpcUrl),
+          transport: http(bundlerUrl),
         });
 
+        // Get gas price from Pimlico (ensures non-zero priority fee)
+        let maxFeePerGas: bigint | undefined;
+        let maxPriorityFeePerGas: bigint | undefined;
+        try {
+          const gasPrice = await (bundlerClient as any).request({
+            method: "pimlico_getUserOperationGasPrice",
+            params: [],
+          }) as { slow: { maxFeePerGas: string; maxPriorityFeePerGas: string } };
+          maxFeePerGas = BigInt(gasPrice.slow.maxFeePerGas);
+          maxPriorityFeePerGas = BigInt(gasPrice.slow.maxPriorityFeePerGas);
+          if (maxPriorityFeePerGas < 1n) maxPriorityFeePerGas = 1n;
+        } catch {
+          maxPriorityFeePerGas = 1n;
+        }
+
         // Send a self-call to trigger deployment
-        // This deploys the account by sending a user operation from it
+        // Gas limits: use values that satisfy both Pimlico (min 10000) and entrypoint (max ~150000)
         const hash = await bundlerClient.sendUserOperation({
           account: smartAccount,
           calls: [{
@@ -130,34 +199,41 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
             value: 0n,
             data: "0x" as `0x${string}`,
           }],
+          callGasLimit: 100000n,
+          verificationGasLimit: 150000n,
+          preVerificationGas: 100000n,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
         });
 
         try {
           const receipt = await bundlerClient.waitForUserOperationReceipt({ hash });
-          await publicClient.waitForTransactionReceipt({ hash: receipt.receipt.transactionHash });
           setIsDeployed(true);
-          console.log("✅ Smart Account deployed via bundler:", receipt.receipt.transactionHash);
+          console.log("✅ Smart Account deployed:", receipt.receipt.transactionHash);
+          return;
         } catch {
-          // If wait fails, the deployment may still have been initiated
-          // Check again after a delay
+          // Deploy submitted but not yet confirmed — check after delay
+          console.log("⏳ Deployment submitted, waiting for confirmation...");
           setTimeout(async () => {
-            const checkCode = await publicClient.getCode({ address: smartAccountAddress });
-            if (checkCode && checkCode !== "0x") {
-              setIsDeployed(true);
-              console.log("✅ Smart Account deployed (confirmed after delay)");
-            }
-          }, 10000);
-          throw new Error("Bundler submission initiated — check back shortly");
+            try {
+              const checkCode = await publicClient.getCode({ address: smartAccountAddress });
+              if (checkCode && checkCode !== "0x") {
+                setIsDeployed(true);
+                console.log("✅ Smart Account deployed (confirmed after delay)");
+              }
+            } catch {}
+          }, 15000);
+          return;
         }
-      } catch (bundlerError) {
-        // If bundler is not configured, mark as ready but not deployed
-        console.warn("⚠️ Bundler not available. Smart Account ready for deployment when bundler is configured.");
-        // Deployment will happen automatically on first real transaction
+      } catch (error) {
+        console.error("❌ Bundler deployment failed:", error);
+        console.log("ℹ️ Bundler deployment failed — likely the smart account needs ETH for gas fees. Send a small amount of ETH to the smart account address and try again, or the account will auto-deploy on first on-chain transaction.");
+        return;
       }
-    } catch (error) {
-      console.error("❌ Error deploying Smart Account:", error);
-      // Don't throw — deployment will happen automatically on first tx anyway
     }
+
+    // No bundler configured — inform user that deployment happens on first transaction
+    console.log("ℹ️ No bundler configured. Smart Account will deploy automatically on first on-chain transaction.");
   };
 
   const executeTransaction = async (calls: Array<{
@@ -172,15 +248,16 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
     try {
       console.log("📤 Executing transaction via Smart Account...");
       
-      // Create bundler client for gasless transactions
-      // Note: You need to configure a bundler RPC endpoint for production
-      // Using Pimlico, Stackup, or another bundler service
-      const bundlerRpcUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL || 
-        "https://api.pimlico.io/v2/421614/rpc?apikey=your-api-key";
-      
+      // Check if bundler is configured
+      const bundlerUrl = process.env.NEXT_PUBLIC_BUNDLER_RPC_URL;
+      if (!bundlerUrl || bundlerUrl.includes("your-api-key")) {
+        throw new Error("Bundler not configured. Set NEXT_PUBLIC_BUNDLER_RPC_URL in your environment.");
+      }
+
+      const { createBundlerClient } = await import("viem/account-abstraction");
       const bundlerClient = createBundlerClient({
         client: publicClient,
-        transport: http(bundlerRpcUrl),
+        transport: http(bundlerUrl),
       });
 
       // Send user operation through bundler
@@ -201,6 +278,12 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
       });
 
       console.log("✅ Transaction executed:", receipt.receipt.transactionHash);
+      
+      // If this was our first transaction, the account is now deployed
+      if (!isDeployed) {
+        setIsDeployed(true);
+      }
+      
       return receipt.receipt.transactionHash;
     } catch (error) {
       console.error("❌ Error executing transaction:", error);
@@ -215,6 +298,7 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
         smartAccountAddress,
         isDeployed,
         isCreating,
+        bundlerConfigured,
         createSmartAccount,
         deploySmartAccount,
         executeTransaction,

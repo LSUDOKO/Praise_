@@ -105,16 +105,20 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
   const [chainId, setChainId] = useState<number | null>(null);
   // Use refs for synchronous access during init race conditions
   const web3authRef = useRef<Web3Auth | null>(null);
-  const initResolveRef = useRef<(() => void) | null>(null);
+  const initPromiseRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
+    let resolveInitPromise: (() => void) | undefined;
+    initPromiseRef.current = new Promise<void>((resolve) => {
+      resolveInitPromise = resolve;
+    });
+
     const init = async () => {
       setIsInitializing(true);
       try {
         const clientId = process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID;
         if (!clientId) {
-          console.error("Web3Auth Client ID not configured");
-          return;
+          throw new Error("NEXT_PUBLIC_WEB3AUTH_CLIENT_ID environment variable is not set");
         }
 
         // Wait for window to be fully loaded
@@ -197,9 +201,9 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
         console.error("❌ Error initializing Web3Auth:", error);
       } finally {
         setIsInitializing(false);
-        if (initResolveRef.current) {
-          initResolveRef.current();
-          initResolveRef.current = null;
+        if (resolveInitPromise) {
+          resolveInitPromise();
+          resolveInitPromise = undefined;
         }
       }
     };
@@ -213,23 +217,16 @@ export function Web3AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const waitForInit = async () => {
-    // Use ref for synchronous check (state may not have updated yet)
     if (web3authRef.current) return;
-    // If init is still in progress, wait for it
-    if (isInitializing && !initResolveRef.current) {
-      await new Promise<void>((resolve) => {
-        initResolveRef.current = resolve;
-      });
+    await initPromiseRef.current;
+    if (!web3authRef.current) {
+      throw new Error("Web3Auth failed to initialize. Please check your configuration (client ID, network) and try again.");
     }
   };
 
   const login = async () => {
     await waitForInit();
-    // Check ref synchronously — state might not have re-rendered yet
-    if (!web3authRef.current) {
-      throw new Error("Web3Auth not initialized yet. Please wait a moment and try again.");
-    }
-    const w3a = web3authRef.current;
+    const w3a = web3authRef.current!;
 
     try {
       const connection = await w3a.connect();

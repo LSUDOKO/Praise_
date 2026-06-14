@@ -27,7 +27,7 @@ export default function DashboardClient() {
   const [role, setRole] = useState<'company' | 'developer'>('company')
   const [copied, setCopied] = useState(false)
   const { isConnected, address, chainId, login, logout } = useWallet()
-  const { smartAccountAddress, isDeployed, isCreating, deploySmartAccount } = useSmartAccount()
+  const { smartAccountAddress, isDeployed, isCreating, deploySmartAccount, bundlerConfigured } = useSmartAccount()
 
   const copyAddress = async () => {
     if (address) {
@@ -37,7 +37,7 @@ export default function DashboardClient() {
     }
   }
 
-  const needsDeploy = isConnected && smartAccountAddress && !isDeployed
+  const needsDeploy = isConnected && smartAccountAddress && !isDeployed && bundlerConfigured
   const isDeploying = isCreating
 
   return (
@@ -65,7 +65,7 @@ export default function DashboardClient() {
 
           {/* Right side controls */}
           <div className="flex items-center gap-2">
-            {/* Smart Account Deploy Button — shown when wallet is connected but smart account not deployed */}
+            {/* Smart Account Deploy Button — only if bundler is configured */}
             {needsDeploy && !isDeploying && (
               <button
                 onClick={deploySmartAccount}
@@ -82,11 +82,13 @@ export default function DashboardClient() {
               </div>
             )}
 
-            {/* Connected badge */}
-            {isConnected && smartAccountAddress && isDeployed && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span className="text-xs text-emerald-400 font-medium">Deployed</span>
+            {/* Ready badge — deployed or counterfactual (auto-deploy on first tx) */}
+            {isConnected && smartAccountAddress && (
+              <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${isDeployed ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isDeployed ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <span className={`text-xs font-medium ${isDeployed ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {isDeployed ? 'Deployed' : 'Ready'}
+                </span>
               </div>
             )}
 
@@ -197,6 +199,11 @@ export default function DashboardClient() {
                         <Rocket className="w-3 h-3 mr-1" />
                         Deploy Now
                       </Button>
+                    )}
+                    {smartAccountAddress && !isDeployed && !bundlerConfigured && (
+                      <div className="mt-2 text-[10px] text-amber-400/70 text-center">
+                        Auto-deploys on first transaction. Set <code className="text-[9px]">NEXT_PUBLIC_BUNDLER_RPC_URL</code> to deploy now.
+                      </div>
                     )}
                   </div>
                   
