@@ -37,7 +37,7 @@ export default function DashboardClient() {
     }
   }
 
-  const needsDeploy = isConnected && smartAccountAddress && !isDeployed && bundlerConfigured
+  const needsDeploy = isConnected && smartAccountAddress && !isDeployed
   const isDeploying = isCreating
 
   return (
@@ -199,11 +199,6 @@ export default function DashboardClient() {
                         <Rocket className="w-3 h-3 mr-1" />
                         Deploy Now
                       </Button>
-                    )}
-                    {smartAccountAddress && !isDeployed && !bundlerConfigured && (
-                      <div className="mt-2 text-[10px] text-amber-400/70 text-center">
-                        Auto-deploys on first transaction. Set <code className="text-[9px]">NEXT_PUBLIC_BUNDLER_RPC_URL</code> to deploy now.
-                      </div>
                     )}
                   </div>
                   

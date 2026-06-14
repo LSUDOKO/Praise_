@@ -82,7 +82,7 @@ export function SmartAccountStatus() {
           </div>
         </div>
 
-        {!isDeployed && smartAccount && bundlerConfigured && (
+        {!isDeployed && smartAccount && (
           <Button
             onClick={deploySmartAccount}
             className="w-full bg-amber-500 text-black hover:bg-amber-400 font-medium"
@@ -90,14 +90,6 @@ export function SmartAccountStatus() {
             <Rocket className="w-4 h-4 mr-2" />
             Deploy Smart Account
           </Button>
-        )}
-        {!isDeployed && smartAccount && !bundlerConfigured && (
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <div className="flex items-center gap-2 text-xs text-amber-300">
-              <Rocket className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Ready for use. Auto-deploys on first on-chain transaction.</span>
-            </div>
-          </div>
         )}
 
         {smartAccountAddress && (

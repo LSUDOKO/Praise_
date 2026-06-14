@@ -253,7 +253,7 @@ export default function CompanyDashboard() {
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   {smartAccountAddress ? 'Deploying...' : 'Creating Account...'}
                 </Button>
-              ) : smartAccountAddress && !isDeployed && bundlerConfigured ? (
+              ) : smartAccountAddress && !isDeployed ? (
                 <Button
                   onClick={deploySmartAccount}
                   className="w-full bg-amber-500 text-black hover:bg-amber-400 font-medium"
@@ -261,13 +261,6 @@ export default function CompanyDashboard() {
                   <Rocket className="w-4 h-4 mr-2" />
                   Deploy Smart Account
                 </Button>
-              ) : smartAccountAddress && !isDeployed && !bundlerConfigured ? (
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <p className="text-xs text-amber-300 flex items-center gap-2">
-                    <Rocket className="w-3.5 h-3.5" />
-                    Smart account is ready. It will deploy automatically on your first on-chain transaction.
-                  </p>
-                </div>
               ) : (
                 <p className="text-xs text-[var(--text-dim)]">Smart account is being created automatically...</p>
               )}

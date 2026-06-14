@@ -111,7 +111,7 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
 
     console.log("🚀 Deploying Smart Account...");
 
-    // First check if already deployed
+    // Check if already deployed
     try {
       const code = await publicClient.getCode({ address: smartAccountAddress });
       if (code && code !== "0x") {
@@ -123,142 +123,47 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
       // RPC error — continue
     }
 
-    // Fund the smart account so it can pay for the deployment user operation
-    const balance = await publicClient.getBalance({ address: smartAccountAddress });
-    const minBalance = BigInt("1000000000000000"); // 0.001 ETH
-
-    if (balance < minBalance) {
-      console.log("💸 Funding smart account with ETH for gas fees...");
-
-      const eoaWalletClient = createWalletClient({
-        account: eoaAddress as Address,
-        chain: arbitrumSepolia,
-        transport: custom(provider),
-      });
-
-      try {
-        const fees = await publicClient.estimateFeesPerGas();
-        const adjustedMaxFee = fees.maxFeePerGas !== undefined
-          ? (fees.maxFeePerGas * 120n) / 100n
-          : undefined;
-        const adjustedPriorityFee = fees.maxPriorityFeePerGas !== undefined
-          ? (fees.maxPriorityFeePerGas * 120n) / 100n
-          : undefined;
-
-        const txHash = await eoaWalletClient.sendTransaction({
-          to: smartAccountAddress,
-          value: minBalance,
-          maxFeePerGas: adjustedMaxFee,
-          maxPriorityFeePerGas: adjustedPriorityFee,
-        });
-        console.log("💸 Funding tx sent:", txHash);
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
-        console.log("✅ Smart account funded with 0.001 ETH");
-      } catch (fundError) {
-        console.error("❌ Failed to fund smart account:", fundError);
-        console.log("ℹ️ Your wallet needs test ETH on Arbitrum Sepolia. Visit a faucet and send ETH to the smart account address, then try deploying again.");
-        return;
-      }
-    }
-
-    // Try to deploy via Pimlico's bundler with proper gas estimation
-    if (!bundlerConfigured) {
-      console.log("ℹ️ Smart Account will deploy automatically on first on-chain transaction.");
-      return;
-    }
+    // Deploy using the EOA: get factory args from the smart account and send as a regular tx
+    // This bypasses the ERC-4337 entrypoint's verificationGasLimit constraint
+    const eoaWalletClient = createWalletClient({
+      account: eoaAddress as Address,
+      chain: arbitrumSepolia,
+      transport: custom(provider),
+    });
 
     try {
-      const { createBundlerClient } = await import("viem/account-abstraction");
-      const bundlerClient = createBundlerClient({
-        client: publicClient,
-        transport: http(process.env.NEXT_PUBLIC_BUNDLER_RPC_URL!),
+      const { factory, factoryData } = await (smartAccount as any).getFactoryArgs();
+      console.log("🏭 Deploying via factory:", factory);
+
+      const fees = await publicClient.estimateFeesPerGas();
+      const adjustedMaxFee = fees.maxFeePerGas !== undefined
+        ? (fees.maxFeePerGas * 120n) / 100n
+        : undefined;
+      const adjustedPriorityFee = fees.maxPriorityFeePerGas !== undefined
+        ? (fees.maxPriorityFeePerGas * 120n) / 100n
+        : undefined;
+
+      const txHash = await eoaWalletClient.sendTransaction({
+        to: factory,
+        data: factoryData,
+        maxFeePerGas: adjustedMaxFee,
+        maxPriorityFeePerGas: adjustedPriorityFee,
       });
 
-      // Use Pimlico's native gas estimation for reliable counterfactual deployment
-      let estimated: {
-        callGasLimit: string;
-        verificationGasLimit: string;
-        preVerificationGas: string;
-        maxFeePerGas: string;
-        maxPriorityFeePerGas: string;
-      };
+      console.log("⏳ Deployment tx sent:", txHash);
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      try {
-        estimated = await (bundlerClient as any).request({
-          method: "pimlico_estimateUserOperationGas",
-          params: [{
-            sender: smartAccountAddress,
-            nonce: "0x0",
-            initCode: "0x",
-            callData: "0x",
-          }],
-        });
-      } catch {
-        // Fall back to eth_estimateUserOperationGas
-        const fallback = await bundlerClient.request({
-          method: "eth_estimateUserOperationGas",
-          params: [{
-            sender: smartAccountAddress,
-            nonce: "0x0",
-            initCode: "0x",
-            callData: "0x",
-          }, "0x0000000071727De22E5E9d8BAf0edAc6f37da032"],
-        }) as { callGasLimit: string; verificationGasLimit: string; preVerificationGas: string };
-        const gasPrice = await (bundlerClient as any).request({
-          method: "pimlico_getUserOperationGasPrice",
-          params: [],
-        }) as { slow: { maxFeePerGas: string; maxPriorityFeePerGas: string } };
-        estimated = {
-          ...fallback,
-          maxFeePerGas: gasPrice.slow.maxFeePerGas,
-          maxPriorityFeePerGas: gasPrice.slow.maxPriorityFeePerGas,
-        };
-      }
-
-      // Use estimated values but ensure they're within entrypoint limits
-      const verificationGasLimit = BigInt(estimated.verificationGasLimit) > 150000n
-        ? 150000n
-        : BigInt(estimated.verificationGasLimit) < 50000n
-          ? 50000n
-          : BigInt(estimated.verificationGasLimit);
-
-      const hash = await bundlerClient.sendUserOperation({
-        account: smartAccount,
-        calls: [{
-          to: smartAccountAddress,
-          value: 0n,
-          data: "0x" as `0x${string}`,
-        }],
-        callGasLimit: BigInt(estimated.callGasLimit) < 50000n ? 50000n : BigInt(estimated.callGasLimit),
-        verificationGasLimit,
-        preVerificationGas: BigInt(estimated.preVerificationGas) < 50000n ? 50000n : BigInt(estimated.preVerificationGas),
-        maxFeePerGas: BigInt(estimated.maxFeePerGas),
-        maxPriorityFeePerGas: BigInt(estimated.maxPriorityFeePerGas) < 1n ? 1n : BigInt(estimated.maxPriorityFeePerGas),
-      });
-
-      try {
-        const receipt = await bundlerClient.waitForUserOperationReceipt({ hash });
+      // Verify deployment succeeded
+      const code = await publicClient.getCode({ address: smartAccountAddress });
+      if (code && code !== "0x") {
         setIsDeployed(true);
-        console.log("✅ Smart Account deployed:", receipt.receipt.transactionHash);
-      } catch {
-        console.log("⏳ Deployment submitted, checking for confirmation...");
-        setTimeout(async () => {
-          try {
-            const code = await publicClient.getCode({ address: smartAccountAddress });
-            if (code && code !== "0x") {
-              setIsDeployed(true);
-              console.log("✅ Smart Account deployed (confirmed after delay)");
-            }
-          } catch {}
-        }, 15000);
+        console.log("✅ Smart Account deployed:", smartAccountAddress);
+      } else {
+        throw new Error("Deployment tx confirmed but account code is empty");
       }
     } catch (error) {
-      console.warn("⚠️ Bundler deployment unavailable. Account will auto-deploy on first on-chain transaction.");
-    } finally {
-      // Always mark as deployed from UI perspective — the bundler handles auto-deploy
-      if (!isDeployed) {
-        setIsDeployed(true);
-      }
+      console.error("❌ Deployment failed:", error);
+      throw error;
     }
   };
 
