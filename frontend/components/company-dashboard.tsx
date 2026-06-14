@@ -21,7 +21,7 @@ export default function CompanyDashboard() {
   const [githubUrl, setGithubUrl] = useState('')
   const [amount, setAmount] = useState('')
   const { address, isConnected: walletConnected, login } = useWallet()
-  const { smartAccount, smartAccountAddress, isDeployed, isCreating, deploySmartAccount, bundlerConfigured } = useSmartAccount()
+  const { smartAccount, smartAccountAddress, isDeployed, isCreating, deploySmartAccount, deployTxHash, clearDeployTx, bundlerConfigured } = useSmartAccount()
   const [solverMode, setSolverMode] = useState<'human' | 'agent'>('human')
   const [txStep, setTxStep] = useState<'idle' | 'approving' | 'creating' | 'done'>('idle')
 
@@ -263,6 +263,23 @@ export default function CompanyDashboard() {
                 </Button>
               ) : (
                 <p className="text-xs text-[var(--text-dim)]">Smart account is being created automatically...</p>
+              )}
+              {deployTxHash && (
+                <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium text-emerald-300">Smart Account Deployed!</span>
+                  </div>
+                  <a
+                    href={`https://sepolia.arbiscan.io/tx/${deployTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[--brand-blue] hover:underline break-all"
+                    onClick={clearDeployTx}
+                  >
+                    View on Arbiscan ↗
+                  </a>
+                </div>
               )}
             </CardContent>
           </Card>

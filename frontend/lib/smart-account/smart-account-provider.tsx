@@ -13,6 +13,7 @@ interface SmartAccountContextType {
   isDeployed: boolean;
   isCreating: boolean;
   bundlerConfigured: boolean;
+  deployTxHash: `0x${string}` | null;
   createSmartAccount: () => Promise<void>;
   deploySmartAccount: () => Promise<void>;
   executeTransaction: (calls: Array<{
@@ -20,6 +21,7 @@ interface SmartAccountContextType {
     value?: bigint;
     data?: `0x${string}`;
   }>) => Promise<`0x${string}`>;
+  clearDeployTx: () => void;
 }
 
 const SmartAccountContext = createContext<SmartAccountContextType>({
@@ -28,9 +30,11 @@ const SmartAccountContext = createContext<SmartAccountContextType>({
   isDeployed: false,
   isCreating: false,
   bundlerConfigured: false,
+  deployTxHash: null,
   createSmartAccount: async () => {},
   deploySmartAccount: async () => {},
   executeTransaction: async () => "0x" as `0x${string}`,
+  clearDeployTx: () => {},
 });
 
 export const useSmartAccount = () => useContext(SmartAccountContext);
@@ -42,6 +46,7 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
   const [isDeployed, setIsDeployed] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [bundlerConfigured, setBundlerConfigured] = useState(false);
+  const [deployTxHash, setDeployTxHash] = useState<`0x${string}` | null>(null);
 
   const publicClient = createPublicClient({
     chain: arbitrumSepolia,
@@ -157,6 +162,7 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
       const code = await publicClient.getCode({ address: smartAccountAddress });
       if (code && code !== "0x") {
         setIsDeployed(true);
+        setDeployTxHash(txHash);
         console.log("✅ Smart Account deployed:", smartAccountAddress);
       } else {
         throw new Error("Deployment tx confirmed but account code is empty");
@@ -166,6 +172,8 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   };
+
+  const clearDeployTx = () => setDeployTxHash(null);
 
   const executeTransaction = async (calls: Array<{
     to: Address;
@@ -271,9 +279,11 @@ export function SmartAccountProvider({ children }: { children: ReactNode }) {
         isDeployed,
         isCreating,
         bundlerConfigured,
+        deployTxHash,
         createSmartAccount,
         deploySmartAccount,
         executeTransaction,
+        clearDeployTx,
       }}
     >
       {children}

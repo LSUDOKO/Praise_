@@ -4,7 +4,7 @@ import { useSmartAccount } from '@/lib/smart-account/smart-account-provider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, CheckCircle2, Wallet, ArrowUpRight, Rocket } from 'lucide-react'
+import { Loader2, CheckCircle2, Wallet, ArrowUpRight, Rocket, ExternalLink } from 'lucide-react'
 
 export function SmartAccountStatus() {
   const {
@@ -13,6 +13,8 @@ export function SmartAccountStatus() {
     isDeployed,
     isCreating,
     deploySmartAccount,
+    deployTxHash,
+    clearDeployTx,
     bundlerConfigured,
   } = useSmartAccount()
 
@@ -90,6 +92,20 @@ export function SmartAccountStatus() {
             <Rocket className="w-4 h-4 mr-2" />
             Deploy Smart Account
           </Button>
+        )}
+
+        {deployTxHash && (
+          <a
+            href={`https://sepolia.arbiscan.io/tx/${deployTxHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+            onClick={clearDeployTx}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Deployed! View transaction
+            <ExternalLink className="w-3 h-3" />
+          </a>
         )}
 
         {smartAccountAddress && (

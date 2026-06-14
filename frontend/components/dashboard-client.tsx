@@ -27,7 +27,7 @@ export default function DashboardClient() {
   const [role, setRole] = useState<'company' | 'developer'>('company')
   const [copied, setCopied] = useState(false)
   const { isConnected, address, chainId, login, logout } = useWallet()
-  const { smartAccountAddress, isDeployed, isCreating, deploySmartAccount, bundlerConfigured } = useSmartAccount()
+  const { smartAccountAddress, isDeployed, isCreating, deploySmartAccount, deployTxHash, clearDeployTx, bundlerConfigured } = useSmartAccount()
 
   const copyAddress = async () => {
     if (address) {
@@ -82,7 +82,21 @@ export default function DashboardClient() {
               </div>
             )}
 
-            {/* Ready badge — deployed or counterfactual (auto-deploy on first tx) */}
+            {deployTxHash && (
+              <a
+                href={`https://sepolia.arbiscan.io/tx/${deployTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all"
+                onClick={clearDeployTx}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Deployed
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            )}
+
+            {/* Ready badge — deployed or counterfactual */}
             {isConnected && smartAccountAddress && (
               <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${isDeployed ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isDeployed ? 'bg-emerald-400' : 'bg-amber-400'}`} />
@@ -199,6 +213,20 @@ export default function DashboardClient() {
                         <Rocket className="w-3 h-3 mr-1" />
                         Deploy Now
                       </Button>
+                    )}
+                    {deployTxHash && (
+                      <div className="mt-2">
+                        <a
+                          href={`https://sepolia.arbiscan.io/tx/${deployTxHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                          onClick={clearDeployTx}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          Deployed! View on Arbiscan ↗
+                        </a>
+                      </div>
                     )}
                   </div>
                   
